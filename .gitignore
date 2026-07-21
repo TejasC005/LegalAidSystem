@@ -1,0 +1,29 @@
+# --- Python / backend ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+*.db
+*.sqlite3
+backend/logs/*.log
+backend/vault_storage/
+
+# --- Env files ---
+.env
+*.env.local
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# --- OS / editor ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Firebase ---
+firebase-service-account.json
+*serviceAccountKey.json

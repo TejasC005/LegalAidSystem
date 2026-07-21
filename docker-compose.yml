@@ -1,0 +1,26 @@
+# Optional: local multi-service dev convenience.
+# Not required for Render deployment — Render will build backend/ and
+# frontend/ as separate services directly from their own configs.
+
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend:/app
