@@ -1,0 +1,372 @@
+/*
+ * frontend/src/pages/DocumentDrafter.css
+ * ──────────────────────────────────────────────────────────────────────────
+ * LEXIS — Document Drafter Page Styles (Module 6)
+ * ──────────────────────────────────────────────────────────────────────────
+ */
+
+.drafter-container {
+  display: flex;
+  flex-direction: column;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.drafter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #1b263b 0%, #0d1b2a 100%);
+  color: #ffffff;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.drafter-title-area {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.drafter-icon {
+  font-size: 2rem;
+}
+
+.drafter-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.drafter-subtitle {
+  font-size: 0.85rem;
+  color: #e0e1dd;
+  margin: 0.2rem 0 0 0;
+}
+
+.badge-drafter {
+  background: rgba(224, 169, 109, 0.2);
+  border: 1px solid #e0a96d;
+  color: #f4a261;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.error-banner {
+  background: #fee2e2;
+  border: 1px solid #f87171;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+/* Template Cards Grid */
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.template-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.template-card:hover {
+  border-color: #e0a96d;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.template-card-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.template-card h3 {
+  margin: 0 0 0.5rem 0;
+  color: #0d1b2a;
+}
+
+.template-card p {
+  color: #4a5568;
+  font-size: 0.88rem;
+  line-height: 1.45;
+
+  flex: 1;
+}
+
+.template-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.btn-start-draft {
+  background: #1b263b;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Active Drafting Session */
+.active-drafting-session {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.session-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.btn-back {
+  background: none;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.session-progress {
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-bar-bg {
+  width: 120px;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #e0a96d;
+  transition: width 0.3s ease;
+}
+
+.draft-chat-window {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.system-msg {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.85rem;
+  background: #f8fafc;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  align-self: center;
+}
+
+.user-bubble {
+  align-self: flex-end;
+  background: #1b263b;
+  color: #ffffff;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  border-bottom-right-radius: 2px;
+  font-size: 0.92rem;
+  max-width: 80%;
+}
+
+.agent-question-box {
+  align-self: flex-start;
+  background: #fdf8f2;
+  border: 1px solid #f6d4b1;
+  border-left: 4px solid #e0a96d;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  max-width: 85%;
+}
+
+.question-step-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #c07d32;
+  text-transform: uppercase;
+}
+
+.question-text {
+  margin: 0.4rem 0 0 0;
+  font-size: 0.98rem;
+  color: #1e293b;
+}
+
+.draft-input-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.draft-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.draft-input:focus {
+  border-color: #1b263b;
+}
+
+.btn-submit-answer {
+  background: #1b263b;
+  color: #ffffff;
+  border: none;
+  padding: 0 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Document Preview Card */
+.document-preview-card {
+  margin-top: 1.5rem;
+  border-top: 2px dashed #e2e8f0;
+  padding-top: 1.5rem;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.preview-download-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-download {
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-download.pdf {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.btn-download.docx {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.preview-document-text {
+  background: #0d1b2a;
+  color: #e0e1dd;
+  padding: 1.5rem;
+  border-radius: 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Saved Drafts List */
+.saved-drafts-section {
+  margin-top: 2rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.saved-drafts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.saved-draft-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.draft-meta {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+
+.download-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ── Module 9: Where to File handoff button ─────────────────────────────────
+ * Displayed in the completed document preview card alongside PDF/DOCX buttons.
+ * Navigates to /filing-guide?doc_type=...&draft_id=... passing structured
+ * context so the citizen doesn't need to re-enter their document type.
+ * ─────────────────────────────────────────────────────────────────────────── */
+.btn-where-to-file {
+  background: linear-gradient(135deg, #065f46, #047857);
+  color: #ffffff;
+  border: none;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.btn-where-to-file:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+

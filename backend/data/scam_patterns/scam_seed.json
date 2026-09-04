@@ -1,0 +1,189 @@
+[
+  {
+    "id": "SCAM_001",
+    "name": "Digital Arrest Scam",
+    "description": "The caller claims to be a police officer, CBI agent, Narcotics officer, or customs official and tells the victim they are under 'digital arrest' for alleged involvement in drug trafficking, money laundering, or illegal parcels. The victim is kept on a video call for hours or days and pressured to transfer money to 'clear their name'.",
+    "keywords": ["digital arrest", "arrested", "digitally arrested", "police video call", "cbi video call", "narcotics video call", "under arrest on call"],
+    "legal_reality": "There is NO concept of 'digital arrest' in Indian law. The Indian Penal Code (IPC), Code of Criminal Procedure (CrPC), and the Bharatiya Nagarik Suraksha Sanhita (BNSS) 2023 do not recognise any form of video-call-based arrest. No legitimate law enforcement agency in India (CBI, Police, ED, Narcotics) can arrest a person or hold them accountable via a phone or video call. Legitimate summons are only issued in writing on official letterhead and are served physically.",
+    "recommended_action": "1. Disconnect the call immediately — do not negotiate or pay anything.\n2. Note the number and screenshot any correspondence.\n3. File a cybercrime complaint at cybercrime.gov.in or call helpline 1930.\n4. Report to your nearest police station with a written complaint.\n5. Inform your bank if any payment was made.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "Nearest police station"],
+    "source_ref": "MHA Cybercrime Awareness Advisory 2024; I4C (Indian Cyber Crime Coordination Centre) Digital Arrest Alert; BNSS 2023",
+    "severity": "CRITICAL"
+  },
+  {
+    "id": "SCAM_002",
+    "name": "Fake CBI / ED / Income Tax Officer Call",
+    "description": "A caller impersonates an officer from CBI, Enforcement Directorate (ED), Income Tax Department, or RBI. They claim the victim's bank account is linked to money laundering, terror funding, or tax evasion and demand immediate payment or bank account details to 'verify' or 'freeze' the account.",
+    "keywords": ["cbi officer", "enforcement directorate", "ed officer", "income tax", "rbi officer", "reserve bank", "money laundering", "terror funding", "account frozen by cbi"],
+    "legal_reality": "CBI, ED, Income Tax, and RBI officers NEVER contact citizens by phone to demand payment or ask for bank account credentials. ED and CBI summons are only issued in writing under Section 50 of PMLA (Prevention of Money Laundering Act, 2002) or under CrPC/BNSS provisions. RBI explicitly states it does not call individuals asking for KYC or account details. Any such call is a fraud.",
+    "recommended_action": "1. Do not share any bank details, OTP, or make any transfer.\n2. Hang up and independently verify by calling the official agency helpline (CBI: 011-24368002, IT Dept: 1800-103-0025).\n3. File a cybercrime complaint at cybercrime.gov.in or call 1930.\n4. File an FIR at your local police station.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "CBI Official: 011-24368002", "IT Dept: 1800-103-0025"],
+    "source_ref": "RBI Advisory on Phone Scams 2023; PMLA Section 50; CBI Official Communications Policy; MHA Cyber Safety Advisory",
+    "severity": "CRITICAL"
+  },
+  {
+    "id": "SCAM_003",
+    "name": "Fake Courier / Customs Package Scam",
+    "description": "The victim receives a call or message claiming a parcel or courier in their name has been intercepted at customs containing illegal items (drugs, counterfeit currency, fake passports). The caller demands a 'customs clearance fee' or 'penalty payment' via UPI or bank transfer to release the package and avoid arrest.",
+    "keywords": ["package detained", "parcel customs", "courier fraud", "customs clearance fee", "illegal parcel", "fedex customs", "dhl customs", "drugs in parcel", "customs officer"],
+    "legal_reality": "Customs authorities (CBIC) under the Customs Act, 1962 do not contact individuals by phone to demand fees for parcel clearance. Legitimate customs duty is paid only at the customs counter with a documented challan (payment receipt). Any request for advance payment via UPI, bank transfer, or gift cards to 'clear' a parcel is fraudulent.",
+    "recommended_action": "1. Do not make any payment.\n2. Contact the actual courier company directly using the official website or helpline to verify the shipment.\n3. Report to CBIC grievance portal: cbic.gov.in.\n4. File a cybercrime complaint at cybercrime.gov.in or call 1930.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "CBIC: cbic.gov.in", "Nearest police station"],
+    "source_ref": "CBIC Customs Act 1962; CBIC Public Advisory on Parcel Scams 2023; MHA I4C Advisory",
+    "severity": "HIGH"
+  },
+  {
+    "id": "SCAM_004",
+    "name": "UPI QR Code Payment Reversal Scam",
+    "description": "A fraudster poses as a buyer or sends a request claiming to 'send money' via UPI. They send a QR code or payment request link and instruct the victim to 'scan to receive money'. Scanning and entering the UPI PIN actually authorises a payment FROM the victim's account, not to it. The victim loses money believing they will receive it.",
+    "keywords": ["upi qr", "scan qr code", "receive money upi", "scan to get payment", "upi fraud", "qr code scan money", "google pay qr", "phonepe qr", "paytm qr scam"],
+    "legal_reality": "In UPI, entering your UPI PIN ALWAYS authorises a debit (payment sent from your account). There is no legitimate scenario where scanning a QR code and entering your PIN causes money to be credited to you. Receiving money via UPI requires NO action from the recipient — the sender simply enters the recipient's UPI ID. Any instruction to 'scan to receive' is a fraud. Under the Payment and Settlement Systems Act, 2007, such fraud is reportable.",
+    "recommended_action": "1. Never enter your UPI PIN to 'receive' money.\n2. If defrauded, immediately call your bank's helpline to freeze the transaction.\n3. File complaint at cybercrime.gov.in within 24 hours (time-sensitive for fund recovery).\n4. Call 1930 (National Cyber Helpline) for immediate assistance.\n5. File complaint with NPCI: npci.org.in.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930 (call immediately)", "NPCI: npci.org.in", "Your bank's 24x7 helpline"],
+    "source_ref": "NPCI UPI Safety Guidelines; RBI Advisory on UPI Frauds 2023; Payment and Settlement Systems Act 2007; MHA Cybercrime Advisory",
+    "severity": "HIGH"
+  },
+  {
+    "id": "SCAM_005",
+    "name": "KYC Expiry / Aadhaar Suspension Scam",
+    "description": "The victim receives an SMS, WhatsApp, or call claiming their bank account KYC has expired, their Aadhaar card has been suspended, or their mobile number is about to be deactivated. They are asked to click a link, install a remote access app, or share an OTP to 'update KYC' or 'reactivate' their account.",
+    "keywords": ["kyc expired", "aadhaar suspended", "aadhaar blocked", "mobile number deactivated", "sim blocked", "update kyc", "kyc verification", "aadhaar link mobile", "bank account freeze kyc"],
+    "legal_reality": "Banks communicate KYC renewal only through official written notices or in-branch visits — never by asking for OTPs or by directing customers to install apps. UIDAI (Unique Identification Authority of India) does not suspend or deactivate Aadhaar via phone calls. No legitimate bank or telecom operator will ask for your OTP over the phone. Sharing an OTP is equivalent to handing over your account password and is specifically warned against under RBI guidelines.",
+    "recommended_action": "1. Do not click any link, install any app, or share any OTP.\n2. Verify directly by visiting your bank branch or official website.\n3. For Aadhaar queries, contact UIDAI official helpline: 1947 (uidai.gov.in).\n4. Report fraud: cybercrime.gov.in or 1930.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "UIDAI: 1947", "Your bank's official helpline"],
+    "source_ref": "RBI Customer Awareness Circular 2022; UIDAI Official Advisory; Telecom Regulatory Authority of India (TRAI) Consumer Advisory",
+    "severity": "HIGH"
+  },
+  {
+    "id": "SCAM_006",
+    "name": "Fake Job Offer / Work-from-Home Scam",
+    "description": "The victim receives a WhatsApp message, email, or social media post offering a high-paying work-from-home job (data entry, product review, YouTube likes, etc.) requiring only a smartphone. An initial small payment is promised and sometimes paid to build trust. The victim is then asked to pay a 'registration fee', 'security deposit', or 'upgrade fee' to access higher-paying tasks, and eventually loses large sums.",
+    "keywords": ["work from home job", "whatsapp job", "youtube like job", "task job", "part time job online", "earn per task", "registration fee job", "job telegram", "google review job"],
+    "legal_reality": "Legitimate employers do NOT ask candidates to pay fees to get a job. Under the Employment Exchanges (Compulsory Notification of Vacancies) Act, 1959, and general contract law, a valid employment contract cannot require upfront payment from the employee. Any scheme requiring you to 'invest to earn' with guaranteed returns is classified as a fraudulent scheme and may also violate RBI regulations on pyramid/Ponzi schemes.",
+    "recommended_action": "1. Never pay any fee to secure a job — this is the primary red flag.\n2. Verify the company's existence on Ministry of Corporate Affairs (MCA) portal: mca.gov.in.\n3. Report fake job offers to the cybercrime portal: cybercrime.gov.in or 1930.\n4. If recruited via a fraudulent agency, report to local Labour Department.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "MCA portal: mca.gov.in"],
+    "source_ref": "Employment Exchanges (Compulsory Notification of Vacancies) Act 1959; MHA Cybercrime Advisory on Job Scams 2023; RBI Circular on Ponzi Schemes",
+    "severity": "HIGH"
+  },
+  {
+    "id": "SCAM_007",
+    "name": "Lottery / Prize Money Scam",
+    "description": "The victim receives an email, SMS, or WhatsApp message claiming they have won a lottery, lucky draw, or KBC (Kaun Banega Crorepati) prize. To claim the prize, they are asked to pay 'processing fees', 'GST', 'TDS', or 'insurance charges' via bank transfer or UPI.",
+    "keywords": ["lottery winner", "you have won", "kbc winner", "prize money", "lucky draw", "claim your prize", "processing fee prize", "lottery ticket won", "WhatsApp lottery"],
+    "legal_reality": "Under the Prize Competitions Act, 1955, and the Lotteries (Regulation) Act, 1998, legitimate lotteries in India are organised ONLY by state governments. Legitimate prize winnings NEVER require the winner to pay upfront fees. Any 'prize' requiring payment before collection is fraudulent. The Income Tax Act, 1961 (Section 194B) mandates TDS on prize winnings, which is deducted BY the organiser — the winner is never asked to pay TDS upfront.",
+    "recommended_action": "1. Delete the message and do not respond.\n2. Never pay any fee to claim a 'prize'.\n3. Verify any lottery claim by contacting the official organiser through their government-registered details.\n4. Report: cybercrime.gov.in or helpline 1930.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930"],
+    "source_ref": "Lotteries (Regulation) Act 1998; Prize Competitions Act 1955; IT Act 1961 Section 194B; MHA Cyber Fraud Advisory",
+    "severity": "MEDIUM"
+  },
+  {
+    "id": "SCAM_008",
+    "name": "Loan App Data Extortion Scam",
+    "description": "The victim installs an instant loan app (often promoted on social media) which demands access to contacts, photos, and phone data as part of 'verification'. After a small loan is disbursed, the app's agents call with inflated repayment demands and, if the victim delays, begin contacting friends and family from the victim's phone book with defamatory messages, or threaten to leak morphed photos.",
+    "keywords": ["loan app harassment", "instant loan app", "loan app contacts", "loan recovery agent threatening", "loan app threatening family", "morphed photo threat loan"],
+    "legal_reality": "Under the Information Technology Act, 2000 (Section 43 and Section 66), and the Digital Personal Data Protection Act, 2023, harvesting phone contacts or photos without explicit consent for debt collection is illegal. RBI's 'Guidelines for Digital Lending' (2022) require all digital lenders to be registered with RBI or partner with an RBI-registered bank. Abusive debt collection practices violate RBI's Fair Practices Code for NBFCs. Filing a defamatory message to family members constitutes an offence under IPC Section 499 (Defamation).",
+    "recommended_action": "1. Stop making payments to unlicensed apps immediately — consult a legal professional.\n2. Revoke app permissions immediately from your phone's settings.\n3. Inform all contacted family/friends that this is a scam.\n4. File a complaint at cybercrime.gov.in or call 1930.\n5. Report the app to Google Play Store / Apple App Store and to RBI: rbi.org.in/sachet.\n6. File a police FIR for harassment and extortion.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "RBI SACHET: rbi.org.in/sachet", "Nearest police station (FIR for extortion)"],
+    "source_ref": "RBI Digital Lending Guidelines 2022; IT Act 2000 Sections 43 & 66; Digital Personal Data Protection Act 2023; IPC Section 499",
+    "severity": "CRITICAL"
+  },
+  {
+    "id": "SCAM_009",
+    "name": "Fake NGO / PM Relief Fund Donation Scam",
+    "description": "Fraudsters create fake websites or social media pages impersonating the PM CARES Fund, PM National Relief Fund, UNICEF India, or popular NGOs (especially active during disasters, floods, or COVID). They collect donations via UPI or bank transfer, and the funds go to the fraudster's account.",
+    "keywords": ["pm cares fund", "prime minister relief fund", "donation fraud", "fake ngo donation", "disaster relief donation", "flood relief donate", "fake charity", "unicef donation fraud"],
+    "legal_reality": "The PM CARES Fund's only official website is pmcares.gov.in and its UPI ID is pmcares@sbi. The PM National Relief Fund's official website is pmnrf.gov.in. Donations should ONLY be made through official government portals or verified NGO accounts (registered with FCRA: fcraonline.nic.in). Impersonating a government fund is an offence under IPC Section 170 (Impersonation of a public servant) and IT Act Section 66D.",
+    "recommended_action": "1. Verify the NGO/fund using FCRA registration portal: fcraonline.nic.in.\n2. Only donate through official government websites (pmcares.gov.in, pmnrf.gov.in).\n3. Report fake charity websites/pages to cybercrime.gov.in or call 1930.\n4. Report fake social media pages to the platform directly.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "FCRA verification: fcraonline.nic.in"],
+    "source_ref": "PM CARES Fund Official Website; FCRA Act 2010; IPC Section 170; IT Act 2000 Section 66D",
+    "severity": "MEDIUM"
+  },
+  {
+    "id": "SCAM_010",
+    "name": "Fake Investment / Trading App Scam (Pig Butchering)",
+    "description": "The fraudster (often posing as a romantic interest, mentor, or financial advisor contacted via WhatsApp, Telegram, or social media) gradually builds trust and then introduces the victim to a fake stock trading, crypto, or forex investment platform. Small initial 'profits' are shown on the fake app to build confidence. The victim is encouraged to invest more. When they try to withdraw, they are asked for taxes or fees, and ultimately all access is blocked.",
+    "keywords": ["investment app", "stock trading scam", "crypto investment", "forex trading app", "trading tips whatsapp", "guaranteed returns", "pig butchering", "fake trading platform", "investment fraud telegram"],
+    "legal_reality": "SEBI (Securities and Exchange Board of India) is the only authority that licenses stock brokers and investment advisors in India. Under the SEBI Act, 1992 and the Securities Contracts (Regulation) Act, 1956, offering investment advisory services or operating a trading platform without SEBI registration is illegal. Guaranteed returns on market investments are prohibited. Any investment app not listed on official Google Play / App Store and not SEBI-registered is operating illegally. Cryptocurrency trading platforms must be registered with FIU-IND (Financial Intelligence Unit).",
+    "recommended_action": "1. Stop all investments in the platform immediately.\n2. Verify any broker or advisor on SEBI's official SCORES portal: scores.sebi.gov.in.\n3. Check SEBI's list of registered intermediaries: sebi.gov.in.\n4. File complaint at cybercrime.gov.in or call 1930 — do so immediately as funds can sometimes be traced and frozen.\n5. File a SEBI complaint at scores.sebi.gov.in.\n6. File a police FIR for cheating under IPC Section 420.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "SEBI SCORES: scores.sebi.gov.in", "Nearest police station (FIR)"],
+    "source_ref": "SEBI Act 1992; Securities Contracts (Regulation) Act 1956; SEBI Advisory on Unauthorised Trading Platforms 2024; IPC Section 420",
+    "severity": "CRITICAL"
+  },
+  {
+    "id": "SCAM_011",
+    "name": "OTP Sharing / SIM Swap Scam",
+    "description": "The fraudster calls posing as a bank employee, telecom company representative, or government official and convinces the victim to share the OTP received on their phone. Alternatively, the fraudster visits the victim's telecom operator with forged documents to get a duplicate SIM card issued, thereby intercepting all OTPs and gaining control of bank accounts.",
+    "keywords": ["share otp", "otp verification call", "bank otp", "sim swap", "duplicate sim", "otp asked on call", "share 6 digit otp", "mobile banking otp fraud"],
+    "legal_reality": "No bank, telecom company, or government agency in India will ever ask you to share an OTP over the phone, chat, or email. This is explicitly stated in all RBI customer guidelines (RBI Master Direction – Know Your Customer, 2016). OTPs are single-use authentication factors; sharing them is equivalent to handing over full account access. Under IT Act Section 66C, unauthorized access to electronic accounts using stolen credentials is punishable with imprisonment up to 3 years.",
+    "recommended_action": "1. NEVER share any OTP with anyone over phone, chat, or email — including people claiming to be from your bank.\n2. If your SIM stops working unexpectedly, immediately call your telecom operator to check for SIM swap activity.\n3. Call your bank's 24x7 fraud helpline immediately to freeze your account.\n4. File complaint at cybercrime.gov.in or call 1930 within 24 hours.\n5. File an FIR at your local police station.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930 (within 24 hours is critical)", "Your bank's 24x7 fraud helpline", "Telecom operator's customer care"],
+    "source_ref": "RBI Master Direction on KYC 2016; RBI Fraud Awareness Campaign; IT Act 2000 Section 66C; DOT Telecom Fraud Advisory",
+    "severity": "CRITICAL"
+  },
+  {
+    "id": "SCAM_012",
+    "name": "Fake Tech Support Scam (Microsoft / Google)",
+    "description": "A pop-up, fake website, or call claims the victim's computer is infected with a virus or has been 'hacked'. The caller poses as a Microsoft, Google, or antivirus support technician and asks the victim to install a remote access application (TeamViewer, AnyDesk, QuickSupport). Once installed, the fraudster accesses the victim's computer, steals banking credentials, or transfers funds.",
+    "keywords": ["microsoft support call", "windows virus", "computer hacked call", "anydesk install", "teamviewer support", "google security alert pop-up", "tech support scam", "your computer has virus", "remote access computer"],
+    "legal_reality": "Microsoft, Google, Apple, and legitimate antivirus companies do NOT proactively call users to report viruses or offer unsolicited technical support. Microsoft's official policy (published at microsoft.com/en-us/security) explicitly states this. Installing remote access software at a stranger's request is equivalent to handing them physical access to your computer and bank account. Under IT Act Section 43(a), unauthorized access to a computer or computer system is a civil wrong; if financial fraud results, it becomes criminal under Section 66.",
+    "recommended_action": "1. Immediately close the pop-up or end the call. Do not call any displayed number.\n2. If you installed AnyDesk/TeamViewer, uninstall it immediately and change all passwords.\n3. If you gave access, disconnect your computer from the internet immediately and contact your bank.\n4. Run an official antivirus scan.\n5. Report at cybercrime.gov.in or call 1930.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "Your bank's 24x7 helpline"],
+    "source_ref": "Microsoft Official Security Advisory (microsoft.com/security); IT Act 2000 Sections 43 & 66; MHA Cybercrime Advisory on Tech Support Scams",
+    "severity": "HIGH"
+  },
+  {
+    "id": "SCAM_013",
+    "name": "Romance / Honey Trap Scam",
+    "description": "The fraudster creates a fake profile on matrimonial sites (Shaadi.com, Jeevansathi), dating apps, or social media and builds an emotional relationship with the victim over weeks or months. They then request financial help citing emergencies (medical, visa, flight ticket, business), or later blackmail the victim with intimate photos or videos shared during the relationship.",
+    "keywords": ["matrimonial fraud", "online romance scam", "dating app fraud", "shaadi.com fraud", "honey trap", "blackmail relationship photo", "relationship money transfer", "foreign boyfriend money", "army officer scam dating"],
+    "legal_reality": "Online romance fraud and honey trap schemes are punishable under multiple Indian laws: IPC Section 420 (cheating by personation), IT Act Section 66C (identity theft), and IT Act Section 67 (publishing obscene material online if intimate images are threatened). Blackmail with intimate images constitutes 'revenge porn' covered under Section 67A of the IT Act. Victims are NOT at fault — sharing intimate content in a trusted relationship is not a crime; distributing it without consent is.",
+    "recommended_action": "1. Stop all financial transfers immediately.\n2. Do not share more intimate content under any pressure.\n3. Preserve all conversation screenshots as evidence.\n4. Report to cybercrime.gov.in (there is a specific 'Women/Child Cyber Crime' category for image-based abuse).\n5. Call helpline 1930.\n6. File an FIR at your local police station — report specifically under IT Act Section 67A for image threats.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "National Commission for Women (NCW) helpline: 7827170170 (if victim is a woman)", "Nearest police station"],
+    "source_ref": "IT Act 2000 Sections 66C, 67, 67A; IPC Section 420; NCW Guidelines on Cyber Harassment; MHA Advisory on Romance Scams",
+    "severity": "HIGH"
+  },
+  {
+    "id": "SCAM_014",
+    "name": "Fake E-Commerce Seller / OLX Scam",
+    "description": "The fraudster poses as an army officer, government employee, or genuine buyer/seller on platforms like OLX, Facebook Marketplace, or Quikr. For sellers, they send a fake payment UPI QR or ask for a 'token amount' via UPI before physically collecting the item. For buyers, they collect full payment and never deliver the product.",
+    "keywords": ["olx fraud", "facebook marketplace scam", "army officer buyer", "fake buyer", "quikr scam", "fake payment olx", "advance payment scam", "second hand fraud"],
+    "legal_reality": "Fraud in online commerce is punishable under IPC Section 420 (cheating and dishonestly inducing delivery of property) with imprisonment up to 7 years, and under IT Act Section 66D (cheating by personation using a computer resource). E-commerce platforms are required under the Consumer Protection (E-Commerce) Rules, 2020 to provide a grievance redressal mechanism. Buyers are entitled to a refund for non-delivery under the Consumer Protection Act, 2019.",
+    "recommended_action": "1. Only use escrow or platform-protected payment systems for high-value items.\n2. For OLX/Quikr, meet in person and verify payment receipt in your bank account BEFORE handing over any item.\n3. Verify army officer identity through official Indian Army channels if claimed.\n4. Report at cybercrime.gov.in or call 1930.\n5. File a consumer complaint at edaakhil.nic.in (for platform-related disputes).",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "Consumer Forum: edaakhil.nic.in"],
+    "source_ref": "IPC Section 420; IT Act 2000 Section 66D; Consumer Protection Act 2019; Consumer Protection (E-Commerce) Rules 2020",
+    "severity": "MEDIUM"
+  },
+  {
+    "id": "SCAM_015",
+    "name": "Bank Account Freeze / Legal Threat Scam",
+    "description": "The victim receives a call or automated message claiming their bank account has been 'flagged for suspicious activity', is about to be permanently frozen, or will be reported to PMLA authorities unless they immediately verify their identity by sharing account details, UPI PIN, or OTP, or by transferring funds to a 'safe account'.",
+    "keywords": ["bank account frozen", "account suspended call", "suspicious transaction call", "transfer to safe account", "bank account blocked call", "pmla bank", "money laundering bank"],
+    "legal_reality": "Banks in India are regulated by RBI and communicate account freezing only through official written notices to the registered address or through net banking alerts — NEVER via unsolicited phone calls asking for credentials. An account freeze under PMLA (Prevention of Money Laundering Act, 2002) is ordered by a court or competent authority through a formal legal process, not by a phone call. 'Transfer to a safe account' is a recognised fraud tactic — no legitimate institution makes such a request.",
+    "recommended_action": "1. Hang up immediately. Do not share any details or make any transfer.\n2. Call your bank using the number on the back of your debit card or official website to verify your account status.\n3. Physically visit your bank branch if concerned.\n4. Report the fraud call at cybercrime.gov.in or call 1930.\n5. Register the phone number on the National Do Not Disturb registry.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "Your bank's official helpline (number on card/official website)"],
+    "source_ref": "RBI Customer Awareness Guidelines 2023; PMLA 2002; RBI Master Circular on Customer Service; Banking Ombudsman Scheme 2021",
+    "severity": "HIGH"
+  },
+  {
+    "id": "SCAM_016",
+    "name": "Fake Electricity / Utility Disconnect Threat Scam",
+    "description": "The victim receives a WhatsApp message, SMS, or call claiming their electricity connection will be disconnected within hours due to non-payment or KYC non-compliance. They are asked to call a given number or click a link to 'update records' or 'pay outstanding dues'. The link leads to a phishing site or the call requests a UPI payment.",
+    "keywords": ["electricity cut", "light bill fraud", "electricity disconnection message", "power cut whatsapp", "electricity payment fraud", "bescom whatsapp", "msedcl fraud", "tata power scam", "electricity kyc update"],
+    "legal_reality": "Electricity distribution companies (DISCOMs) in India communicate billing and disconnection notices only through official written notices, the company's official mobile app, or the registered SMS sender ID — not WhatsApp. Legitimate utility payments are made through the DISCOM's official website, authorised payment portals, or their app. Phishing using utility company names violates IT Act Section 66C (identity theft) and Section 66D (cheating by personation).",
+    "recommended_action": "1. Do not click any link or call the given number.\n2. Log into your electricity provider's official app or website to check your actual bill status.\n3. Call your DISCOM's official customer care number (found on your electricity bill) to verify.\n4. Report phishing messages at cybercrime.gov.in or call 1930.\n5. Forward suspicious WhatsApp messages to 1930 (SANCHAR SAATHI helpline).",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "Your DISCOM's official customer care (number on electricity bill)"],
+    "source_ref": "IT Act 2000 Sections 66C & 66D; Electricity Act 2003; MHA Cybercrime Advisory on Utility Scams 2023",
+    "severity": "MEDIUM"
+  },
+  {
+    "id": "SCAM_017",
+    "name": "Sextortion / Deepfake Threat Scam",
+    "description": "The victim receives a call or message from a stranger who claims to have recorded intimate video of them during a video call (sometimes a real recording made after the fraudster convinced the victim to undress, sometimes a fake/deepfake). The fraudster threatens to send this video to the victim's contacts, family, or employer unless they pay via UPI or Bitcoin. The payment demand escalates repeatedly even after payment.",
+    "keywords": ["sextortion", "intimate video threat", "blackmail video call", "deepfake blackmail", "video call nude", "send video to family", "cyber blackmail", "sexual blackmail", "pay or share video"],
+    "legal_reality": "Threatening to share or distribute intimate images/videos without consent constitutes an offence under IT Act Section 67 (publishing obscene material) and Section 67A (publishing sexually explicit content). If deepfakes are used, IT Act Section 66E (violation of privacy) also applies. Demands backed by such threats constitute criminal extortion under IPC Section 383 and 384, punishable with up to 3 years imprisonment. Paying the fraudster NEVER guarantees deletion — it encourages further demands. Victims are NOT at legal risk for their own recorded images.",
+    "recommended_action": "1. DO NOT pay any amount — payment does not stop the harassment.\n2. Block the fraudster on all platforms immediately.\n3. Do NOT delete evidence — screenshot all threats and transactions as evidence.\n4. Report at cybercrime.gov.in under the 'Women/Child' category or call 1930.\n5. File an FIR at your nearest police station — request complaint under IPC Section 384 and IT Act Section 67A.\n6. Seek support: iCall helpline (9152987821) for emotional support.",
+    "reporting_channels": ["cybercrime.gov.in", "Helpline: 1930", "iCall (emotional support): 9152987821", "Nearest police station (FIR essential)"],
+    "source_ref": "IT Act 2000 Sections 66E, 67, 67A; IPC Sections 383 & 384; MHA I4C Sextortion Advisory 2024; National Commission for Women Advisory",
+    "severity": "CRITICAL"
+  }
+]

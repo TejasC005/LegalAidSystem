@@ -1,0 +1,169 @@
+/*
+ * frontend/src/components/layout/AppLayout.css
+ * ──────────────────────────────────────────────
+ * Styles for the shared app shell (header, sidebar, main, footer).
+ * Uses CSS custom properties defined in index.css.
+ */
+
+/* ── Overall grid ────────────────────────────────────────────────────────── */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;          /* Take up the full viewport height */
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.app-header {
+  height: var(--header-height);
+  background-color: var(--color-primary-dark);
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;           /* Header stays at the top when you scroll */
+  top: 0;
+  z-index: 100;               /* Above everything else */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header__logo {
+  font-size: 1.5rem;
+}
+
+.app-header__name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.app-header__tagline {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.65);
+  padding-left: 4px;
+  display: none;              /* Hidden on small screens */
+}
+
+@media (min-width: 640px) {
+  .app-header__tagline { display: inline; }
+}
+
+.app-header__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-header__phone {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.8);
+}
+
+.app-header__role-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  padding: 2px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.app-header__logout-btn {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.85);
+  border-color: rgba(255,255,255,0.4);
+  padding: 5px 12px;
+}
+
+.app-header__logout-btn:hover {
+  background-color: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.7);
+}
+
+/* ── Body (sidebar + main content) ──────────────────────────────────────── */
+.app-body {
+  display: flex;
+  flex: 1;                    /* Takes up all remaining vertical space */
+  overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.app-sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--color-sidebar-bg);
+  flex-shrink: 0;             /* Sidebar never shrinks below its width */
+  overflow-y: auto;           /* Scroll if links overflow */
+  padding: 16px 0;
+}
+
+.app-sidebar__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.app-sidebar__item {
+  width: 100%;
+}
+
+/* Base link style */
+.app-sidebar__link {
+  display: block;
+  padding: 10px 14px;
+  border-radius: var(--border-radius);
+  color: var(--color-sidebar-text);
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-sidebar__link:hover {
+  background-color: var(--color-sidebar-hover);
+  color: #ffffff;
+}
+
+/* Active link (NavLink adds this class automatically) */
+.app-sidebar__link--active {
+  background-color: var(--color-sidebar-active);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ── Main content area ───────────────────────────────────────────────────── */
+.app-main {
+  flex: 1;                    /* Takes up all remaining horizontal space */
+  overflow-y: auto;           /* Scroll within the main area */
+  padding: 28px 32px;
+  background-color: var(--color-bg);
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.app-footer {
+  height: var(--footer-height);
+  background-color: var(--color-primary-dark);
+  color: rgba(255,255,255,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  padding: 0 24px;
+}
+
+.app-footer__divider {
+  opacity: 0.4;
+}
