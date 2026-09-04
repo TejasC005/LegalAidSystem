@@ -1,0 +1,639 @@
+/*
+ * frontend/src/pages/FilingGuide.css
+ * ─────────────────────────────────────────────────────────────────────────────
+ * LEXIS — Complaint Filing Guide Styles (Module 9)
+ * Premium dark-mode design using emerald/teal palette.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/* ── Page container ──────────────────────────────────────────────────────── */
+.filing-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.filing-header {
+  background: linear-gradient(135deg, #0f4c3a 0%, #136b52 50%, #1a8a6a 100%);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 4px 24px rgba(19, 107, 82, 0.3);
+}
+
+.filing-title-area {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filing-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.filing-title {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.3rem 0;
+}
+
+.filing-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0;
+}
+
+.badge-filing {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Handoff banner ──────────────────────────────────────────────────────── */
+.handoff-banner {
+  background: linear-gradient(135deg, #1a2f1e, #1d3a25);
+  border: 1px solid #2d6a40;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideDown 0.35s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.handoff-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.handoff-banner strong {
+  display: block;
+  color: #6ee7b7;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.handoff-banner p {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+}
+
+.btn-back-drafter {
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid #2d6a40;
+  color: #6ee7b7;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: auto;
+  transition: background 0.2s;
+}
+.btn-back-drafter:hover {
+  background: rgba(110, 231, 183, 0.22);
+}
+
+/* ── Error banner ────────────────────────────────────────────────────────── */
+.filing-error-banner {
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  color: #fca5a5;
+  border-radius: 10px;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+/* ── Manual lookup form ──────────────────────────────────────────────────── */
+.lookup-form-section {
+  background: var(--color-surface, #1a1f2e);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.lookup-form-section h2 {
+  font-size: 1.3rem;
+  color: #e5e7eb;
+  margin: 0 0 0.5rem 0;
+}
+
+.lookup-hint {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.doc-type-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.doc-type-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  user-select: none;
+}
+
+.doc-type-card:hover {
+  border-color: rgba(19, 107, 82, 0.6);
+  background: rgba(19, 107, 82, 0.08);
+  transform: translateY(-2px);
+}
+
+.doc-type-card.selected {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+.doc-type-card-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.doc-type-card h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin: 0 0 0.4rem 0;
+}
+
+.doc-type-card p {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+.doc-type-portal-hint {
+  font-size: 0.72rem;
+  color: #6ee7b7;
+  font-weight: 500;
+}
+
+.btn-lookup {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.btn-lookup:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-lookup:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Loading state ───────────────────────────────────────────────────────── */
+.filing-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(16, 185, 129, 0.2);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Result section ──────────────────────────────────────────────────────── */
+.authority-result-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.result-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.btn-reset {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-reset:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #e5e7eb;
+}
+
+.result-doc-type-badge {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+  padding: 0.35rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+
+/* ── Authority card ──────────────────────────────────────────────────────── */
+.authority-card {
+  background: var(--color-surface, #1a1f2e);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.authority-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.authority-card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0 0 0.3rem 0;
+  line-height: 1.3;
+}
+
+.authority-card-short {
+  font-size: 0.85rem;
+  color: #10b981;
+  margin: 0;
+  font-weight: 500;
+}
+
+.verified-badge {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.authority-description {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Shared section styles ───────────────────────────────────────────────── */
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 0.75rem;
+}
+
+/* ── Portal section ──────────────────────────────────────────────────────── */
+.portal-section {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.portal-link-btn {
+  display: inline-block;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #fff;
+  text-decoration: none;
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: opacity 0.2s, transform 0.15s;
+  margin-bottom: 0.5rem;
+}
+.portal-link-btn:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.portal-scope-note {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Filing tiers ────────────────────────────────────────────────────────── */
+.filing-tiers-section { /* uses section-label above */ }
+
+.tiers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tier-card {
+  display: flex;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.tier-step {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+  font-size: 0.85rem;
+  font-weight: 700;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tier-content {
+  flex: 1;
+}
+
+.tier-content strong {
+  display: block;
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+
+.tier-content p {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 0.4rem 0;
+  line-height: 1.4;
+}
+
+.tier-deadline,
+.tier-jurisdiction {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  margin-right: 0.5rem;
+}
+
+/* ── Fee section ─────────────────────────────────────────────────────────── */
+.fee-section {
+  background: rgba(251, 191, 36, 0.04);
+  border: 1px solid rgba(251, 191, 36, 0.12);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.fee-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.fee-item {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  align-items: flex-start;
+}
+
+.fee-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 130px;
+}
+
+.fee-value {
+  color: #e5e7eb;
+}
+
+.fee-item.fee-note .fee-value {
+  color: #fbbf24;
+}
+
+.fee-source {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* Fee schedule table */
+.fee-schedule {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.75rem;
+}
+
+.fee-schedule-title {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.fee-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.fee-table th {
+  text-align: left;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fee-table td {
+  padding: 0.4rem 0.75rem;
+  color: #e5e7eb;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ── Documents checklist ─────────────────────────────────────────────────── */
+.documents-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.document-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.75);
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.document-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.check-icon {
+  color: rgba(16, 185, 129, 0.6);
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Notes section ───────────────────────────────────────────────────────── */
+.notes-section {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.notes-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notes-list li {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+}
+
+/* ── Timeline section ────────────────────────────────────────────────────── */
+.timeline-section p {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Legal footer ────────────────────────────────────────────────────────── */
+.legal-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.legal-basis,
+.source-ref,
+.last-verified {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1.4;
+}
+
+.legal-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .filing-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .doc-type-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .authority-card-header {
+    flex-direction: column;
+  }
+
+  .handoff-banner {
+    flex-wrap: wrap;
+  }
+
+  .btn-back-drafter {
+    margin-left: 0;
+  }
+}

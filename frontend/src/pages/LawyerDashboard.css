@@ -1,0 +1,252 @@
+/*
+ * frontend/src/pages/LawyerDashboard.css
+ * ──────────────────────────────────────────────────────────────────────────────
+ * LEXIS — Lawyer Dashboard Styles (Module 13)
+ *
+ * Design intent:
+ *   Premium dark-mode scaffold page. The Coming Soon notice uses a warm amber
+ *   tone (distinct from the teal citizen UI and sky-blue admin UI) so the
+ *   lawyer portal feels visually distinct and intentional — not a placeholder
+ *   that was forgotten.
+ * ──────────────────────────────────────────────────────────────────────────────
+ */
+
+/* ── Page container ─────────────────────────────────────────────────────────── */
+.lawyer-dashboard {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  animation: lawyerFadeIn 0.4s ease-out;
+}
+
+@keyframes lawyerFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ── Hero banner ─────────────────────────────────────────────────────────────── */
+.lawyer-hero {
+  text-align: center;
+  padding: 3rem 2rem 2.5rem;
+  background: linear-gradient(135deg, #1a1200 0%, #2d1f00 40%, #1e1600 100%);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle radial glow behind hero */
+.lawyer-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(251, 191, 36, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.lawyer-hero__badge {
+  display: inline-block;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 1rem;
+  border-radius: 2rem;
+  margin-bottom: 1.25rem;
+}
+
+.lawyer-hero__title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.lawyer-hero__subtitle {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+
+/* ── Coming Soon notice ──────────────────────────────────────────────────────── */
+.lawyer-notice {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #1c1400 0%, #251a00 100%);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-left: 4px solid #fbbf24;
+  border-radius: 0.75rem;
+  padding: 1.5rem 1.75rem;
+}
+
+.lawyer-notice__icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+.lawyer-notice__body {
+  flex: 1;
+}
+
+.lawyer-notice__heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin: 0 0 0.6rem;
+}
+
+.lawyer-notice__text {
+  font-size: 0.92rem;
+  color: #cbd5e1;
+  line-height: 1.65;
+  margin: 0 0 0.5rem;
+}
+
+.lawyer-notice__text:last-child {
+  margin-bottom: 0;
+}
+
+.lawyer-notice__text strong {
+  color: #f8fafc;
+}
+
+
+/* ── Planned features section ────────────────────────────────────────────────── */
+.lawyer-features {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.lawyer-features__heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin: 0;
+}
+
+.lawyer-features__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+
+/* ── Individual feature card ─────────────────────────────────────────────────── */
+.lawyer-feature-card {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 0.875rem;
+  padding: 1.4rem 1.5rem;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.lawyer-feature-card:hover {
+  border-color: rgba(251, 191, 36, 0.25);
+  transform: translateY(-2px);
+}
+
+.lawyer-feature-card__icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 0.1rem;
+  opacity: 0.7;           /* Dimmed — features are not live */
+}
+
+.lawyer-feature-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lawyer-feature-card__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.lawyer-feature-card__description {
+  font-size: 0.88rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.lawyer-feature-card__phase-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 1rem;
+  padding: 0.2rem 0.65rem;
+  align-self: flex-start;
+  letter-spacing: 0.03em;
+}
+
+
+/* ── Scope boundary footer note ──────────────────────────────────────────────── */
+.lawyer-scope-note {
+  border-top: 1px solid #1e293b;
+  padding-top: 1.5rem;
+}
+
+.lawyer-scope-note__inner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.lawyer-scope-note__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  opacity: 0.6;
+}
+
+.lawyer-scope-note__text {
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.lawyer-scope-note__text strong {
+  color: #64748b;
+}
+
+
+/* ── Responsive adjustments ──────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .lawyer-hero__title {
+    font-size: 1.6rem;
+  }
+
+  .lawyer-features__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lawyer-notice {
+    flex-direction: column;
+  }
+}

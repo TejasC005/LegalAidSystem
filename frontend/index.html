@@ -4,9 +4,33 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO: Page title shown in browser tab and search results -->
     <title>LEXIS — Legal Aid, Autonomously</title>
+
+    <!-- SEO: Description shown in search engine results -->
+    <meta
+      name="description"
+      content="LEXIS is an autonomous multi-agent legal aid system for Indian citizens. Understand your rights, draft documents, analyze contracts, detect scams, and safely store legal documents — powered by AI."
+    />
+
+    <!-- SEO: Keywords (secondary signal for search engines) -->
+    <meta name="keywords" content="legal aid India, RTI, consumer rights, legal documents, AI legal assistant" />
+
+    <!-- Open Graph: controls how the link looks when shared on WhatsApp, Twitter, etc. -->
+    <meta property="og:title" content="LEXIS — Legal Aid, Autonomously" />
+    <meta property="og:description" content="Autonomous multi-agent legal aid for Indian citizens." />
+    <meta property="og:type" content="website" />
+
+    <!-- Preconnect to Google Fonts (speeds up font loading) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
   <body>
+    <!--
+      React mounts here.
+      Everything you see in the browser is rendered inside this div by main.jsx.
+    -->
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

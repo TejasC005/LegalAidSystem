@@ -27,3 +27,8 @@ frontend/.vite/
 # --- Firebase ---
 firebase-service-account.json
 *serviceAccountKey.json
+
+# --- Documentation / Test ---
+docs/Test/
+backend/latest_otp.txt
+

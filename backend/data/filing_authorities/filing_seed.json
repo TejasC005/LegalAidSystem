@@ -1,0 +1,177 @@
+[
+  {
+    "id": "FILING_RTI_001",
+    "doc_type": "rti_application",
+    "doc_type_name": "RTI Application",
+    "authority_name": "Public Information Officer (PIO) of the concerned Public Authority",
+    "authority_short": "PIO / First Appellate Authority / Central Information Commission",
+    "description": "RTI Applications under the Right to Information Act, 2005 are filed in a three-tier system: first to the designated PIO of the public authority, then to the First Appellate Authority within that department if unsatisfied, and finally to the Central Information Commission (for central public authorities) or State Information Commission (for state public authorities) as a second appeal.",
+    "filing_tiers": [
+      {
+        "tier": 1,
+        "name": "Public Information Officer (PIO)",
+        "description": "File your RTI application directly to the PIO of the specific public authority (e.g., Ministry of Railways, Municipal Corporation). Every public authority under RTI Act 2005 must designate a PIO.",
+        "deadline_to_respond": "30 days (10 days if life/liberty is involved — RTI Act 2005, Section 7)",
+        "how_to_file": "In writing (physical / postal) or online via RTI Online portal for central govt authorities"
+      },
+      {
+        "tier": 2,
+        "name": "First Appellate Authority (FAA)",
+        "description": "If PIO denies information or does not reply within 30 days, appeal to the First Appellate Authority within the same public authority.",
+        "deadline_to_file": "Within 30 days of receiving PIO response (or 30 days after deadline if no response)",
+        "deadline_to_respond": "30 days (extendable to 45 days with reasons)"
+      },
+      {
+        "tier": 3,
+        "name": "Central / State Information Commission",
+        "description": "Second and final appeal to the CIC (central authorities) or SIC (state authorities). Can award penalties up to ₹25,000 on errant PIOs.",
+        "portal_central": "https://cic.gov.in",
+        "portal_rti_online": "https://rtionline.gov.in",
+        "note": "State-specific SIC portals vary by state — check your state government website"
+      }
+    ],
+    "portal_url": "https://rtionline.gov.in",
+    "portal_name": "RTI Online (Government of India)",
+    "portal_scope": "Central Government public authorities only. For state authorities, file with the respective state RTI portal or physically.",
+    "fee": {
+      "amount_central": "₹10 (ten rupees)",
+      "payment_methods_central": ["Demand Draft", "Banker's Cheque", "Indian Postal Order", "Online payment via RTI Online portal"],
+      "fee_exemption": "Persons below poverty line (BPL) are exempt from fee — attach BPL card copy",
+      "state_fees": "needs_verification — state RTI fees vary; most states charge ₹10–₹50",
+      "source": "RTI Act 2005, Section 6(1) and RTI (Regulation of Fee and Cost) Rules, 2005"
+    },
+    "required_documents": [
+      "Written RTI application (in English, Hindi, or official language of the state)",
+      "Clear statement of information sought",
+      "Applicant name, address, and contact details",
+      "Application fee (Demand Draft / IPO / postal order / online payment)",
+      "BPL card copy (if claiming fee exemption)"
+    ],
+    "response_timeline": "30 days from receipt by PIO (10 days if the matter involves life or liberty)",
+    "legal_basis": "Right to Information Act, 2005 (Act 22 of 2005)",
+    "important_notes": [
+      "RTI does not apply to certain exempt organisations listed in the Second Schedule of the RTI Act (e.g., Intelligence Bureau, RAW).",
+      "You do not need to give any reason for seeking information.",
+      "Information that would endanger national security or privacy of a third party may be withheld under Sections 8 and 9.",
+      "If your PIO is in a central government ministry, use the RTI Online portal for fastest processing."
+    ],
+    "source_ref": "Right to Information Act 2005 (Act 22 of 2005); RTI (Regulation of Fee and Cost) Rules 2005; CIC website cic.gov.in",
+    "verified": true,
+    "last_verified": "2026-08-26"
+  },
+  {
+    "id": "FILING_CONSUMER_001",
+    "doc_type": "consumer_complaint",
+    "doc_type_name": "Consumer Complaint",
+    "authority_name": "Consumer Disputes Redressal Commission",
+    "authority_short": "District / State / National Consumer Commission (DCDRC / SCDRC / NCDRC)",
+    "description": "Consumer complaints under the Consumer Protection Act, 2019 are filed with the Consumer Disputes Redressal Commissions, which operate at three levels based on the value of the goods/services plus compensation sought. The e-Daakhil portal (edaakhil.nic.in) enables online filing for all three tiers.",
+    "filing_tiers": [
+      {
+        "tier": "District Commission (DCDRC)",
+        "jurisdiction": "Claims up to ₹50 lakh",
+        "note": "File at the District Consumer Disputes Redressal Commission in your district"
+      },
+      {
+        "tier": "State Commission (SCDRC)",
+        "jurisdiction": "Claims above ₹50 lakh up to ₹2 crore",
+        "note": "File at the State Consumer Disputes Redressal Commission in your state capital"
+      },
+      {
+        "tier": "National Commission (NCDRC)",
+        "jurisdiction": "Claims above ₹2 crore",
+        "address": "National Consumer Disputes Redressal Commission, Upbhokta Nyay Bhawan, F-Block, GPO Complex, INA, New Delhi — 110 023",
+        "note": "Can also be filed online via e-Daakhil portal"
+      }
+    ],
+    "portal_url": "https://edaakhil.nic.in",
+    "portal_name": "e-Daakhil (National Consumer Disputes Redressal Commission — official portal)",
+    "portal_scope": "All three tiers (District, State, National). Allows online complaint filing, tracking, and hearing scheduling.",
+    "fee": {
+      "structure": "Fee is based on the value of goods/services and compensation claimed",
+      "fee_schedule": [
+        { "claim_up_to": "₹5 lakh", "fee": "₹200" },
+        { "claim_up_to": "₹10 lakh", "fee": "₹400" },
+        { "claim_up_to": "₹20 lakh", "fee": "₹500" },
+        { "claim_up_to": "₹50 lakh", "fee": "₹2,000 (District Commission)" },
+        { "claim_up_to": "₹1 crore", "fee": "₹4,000 (State Commission)" },
+        { "claim_up_to": "₹2 crore", "fee": "₹5,000 (State Commission)" },
+        { "claim_up_to": "₹10 crore", "fee": "₹7,500 (National Commission)" }
+      ],
+      "payment_online": "Via e-Daakhil portal using net banking / UPI / debit card",
+      "payment_offline": "Demand Draft in favour of the respective Commission",
+      "source": "Consumer Protection (Consumer Disputes Redressal Commissions) Rules, 2020 — Schedule of Fees"
+    },
+    "required_documents": [
+      "Consumer complaint form (can be submitted via e-Daakhil portal)",
+      "Purchase invoice / receipt / contract / service agreement (proof of transaction)",
+      "Evidence of defect/deficiency (photos, test reports, correspondence with seller/company)",
+      "Copy of legal notice sent to the opposite party (if sent)",
+      "Identity and address proof of complainant",
+      "Affidavit verifying complaint contents",
+      "Filing fee payment proof"
+    ],
+    "response_timeline": "Opposite party must file response within 30 days; Commission aims to dispose cases within 3 months (5 months where laboratory testing required) — Consumer Protection Act 2019, Section 38",
+    "legal_basis": "Consumer Protection Act, 2019 (Act 35 of 2019); Consumer Protection (Consumer Disputes Redressal Commissions) Rules, 2020",
+    "important_notes": [
+      "You can file online without a lawyer — the process is designed to be citizen-accessible.",
+      "Limitation period: complaint must be filed within 2 years of the cause of action (defect/deficiency).",
+      "Mediation is mandatory at the first stage — the Commission will refer to mediation if both parties agree.",
+      "Legal notice to the opposite party before filing is advisable but not mandatory."
+    ],
+    "source_ref": "Consumer Protection Act 2019, Sections 34–59; Consumer Protection (Consumer Disputes Redressal Commissions) Rules 2020; e-Daakhil portal edaakhil.nic.in",
+    "verified": true,
+    "last_verified": "2026-08-26"
+  },
+  {
+    "id": "FILING_LEGAL_NOTICE_001",
+    "doc_type": "legal_notice",
+    "doc_type_name": "Legal Demand Notice",
+    "authority_name": "No Central Government Portal — Served Directly to Opposite Party",
+    "authority_short": "Direct Service + Civil Court (if unresolved)",
+    "description": "A legal demand notice is served directly to the opposite party — it is not filed with any government portal. It is a formal written communication before initiating legal proceedings. If the matter is not resolved after the notice, the next step is filing a civil suit in the appropriate Civil Court.",
+    "filing_tiers": [
+      {
+        "tier": "Direct Service (primary)",
+        "name": "Serve notice to opposite party",
+        "description": "Send via Registered Post with Acknowledgement Due (RPAD) to the opposite party's last known address. Keep the postal receipt and returned acknowledgement card as proof of service.",
+        "alternatives": ["Speed Post (with tracking)", "Courier with delivery proof", "Email (if service via email is agreed or can be proven)"]
+      },
+      {
+        "tier": "Civil Court (if unresolved)",
+        "name": "File civil suit in Civil Court",
+        "description": "If the opposite party does not respond or does not comply within the notice period, file a civil suit. Court depends on jurisdiction and claim amount.",
+        "jurisdiction": {
+          "money_claims_up_to": "needs_verification — varies by state. Generally: District Munsiff/Civil Judge (Junior Division) courts for smaller claims; District Court for larger.",
+          "note": "Court fees are state-specific under the respective State Court Fees Acts — check your state's court fee schedule."
+        }
+      }
+    ],
+    "portal_url": null,
+    "portal_name": "No portal — physical or postal service only",
+    "portal_scope": "Not applicable. For landlord-tenant disputes in some states, Rent Authority portals may exist — needs_verification by state.",
+    "fee": {
+      "notice_sending_fee": "India Post RPAD: approximately ₹35–₹80 depending on weight and city (check indiapost.gov.in for current rates)",
+      "court_filing_fee": "needs_verification — court fees are governed by the Court Fees Act 1870 and respective State Court Fees Acts; they vary by claim value and state",
+      "lawyer_fees": "Optional — not required for sending a legal notice, but recommended for complex disputes",
+      "source": "India Post rate card; Court Fees Act 1870 (as amended by states)"
+    },
+    "required_documents": [
+      "Legal demand notice (addressed to opposite party, signed by sender)",
+      "Supporting evidence of the dispute (e.g., rent receipts, original agreement, photographs, correspondence)",
+      "Copy of relevant agreements (lease/rent agreement, service contract, purchase invoice)",
+      "Identity proof of sender"
+    ],
+    "response_timeline": "Typically 15–30 days notice period is given in the notice itself. No statutory deadline — set by sender.",
+    "legal_basis": "Legal notices are governed by the substantive law underlying the dispute (e.g., Transfer of Property Act 1882 for landlord-tenant; Contract Act 1872 for contract disputes; Code of Civil Procedure 1908 for civil suits)",
+    "important_notes": [
+      "A legal notice is not mandatory before filing a civil suit (except in certain specific cases like defamation under Section 80 CPC, or suits against government).",
+      "Sending a notice via RPAD creates a legal presumption of service — keep the tracking proof.",
+      "For landlord-tenant disputes: many states have Rent Control Acts with dedicated Rent Tribunals — check your state's rent law.",
+      "Court fees for civil suits are state-specific and cannot be stated without knowing your state — consult your state court fee schedule or a local lawyer."
+    ],
+    "source_ref": "Transfer of Property Act 1882; Indian Contract Act 1872; Code of Civil Procedure 1908; Court Fees Act 1870",
+    "verified": true,
+    "last_verified": "2026-08-26"
+  }
+]

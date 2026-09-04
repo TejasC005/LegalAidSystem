@@ -1,0 +1,234 @@
+/*
+ * frontend/src/pages/RightsExplainer.css
+ * ──────────────────────────────────────────────────────────────────────────
+ * LEXIS — Rights Explainer Chat Page Styles (Module 5)
+ * ──────────────────────────────────────────────────────────────────────────
+ */
+
+.rights-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.rights-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #0f4c5c 0%, #1f2421 100%);
+  color: #ffffff;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.rights-title-area {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rights-header-icon {
+  font-size: 2rem;
+}
+
+.rights-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.rights-subtitle {
+  font-size: 0.85rem;
+  color: #a3c4bc;
+  margin: 0.2rem 0 0 0;
+}
+
+.badge-rag {
+  background: rgba(38, 166, 154, 0.25);
+  border: 1px solid #26a69a;
+  color: #80cbc4;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.suggestions-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.suggestion-chip {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  color: #333333;
+  padding: 0.5rem 0.9rem;
+  border-radius: 18px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggestion-chip:hover {
+  background: #e0f2f1;
+  border-color: #00897b;
+  color: #004d40;
+  transform: translateY(-1px);
+}
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6c757d;
+  text-align: center;
+}
+
+.chat-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+.message-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+}
+
+.message-row.user {
+  align-self: flex-end;
+}
+
+.message-row.agent {
+  align-self: flex-start;
+}
+
+.message-sender {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.message-row.user .message-sender {
+  text-align: right;
+}
+
+.message-bubble {
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  line-height: 1.55;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.message-row.user .message-bubble {
+  background: #0f4c5c;
+  color: #ffffff;
+  border-bottom-right-radius: 2px;
+}
+
+.message-row.agent .message-bubble {
+  background: #ffffff;
+  color: #212529;
+  border: 1px solid #dee2e6;
+  border-bottom-left-radius: 2px;
+}
+
+.citation-card {
+  margin-top: 0.85rem;
+  padding: 0.75rem 1rem;
+  background: #e0f2f1;
+  border-left: 4px solid #00897b;
+  border-radius: 6px;
+  font-size: 0.83rem;
+  color: #004d40;
+}
+
+.citation-card-header {
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.input-bar {
+  display: flex;
+  gap: 0.75rem;
+  background: #ffffff;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+}
+
+.rights-input {
+  flex: 1;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.rights-input:focus {
+  border-color: #0f4c5c;
+}
+
+.btn-send {
+  background: #0f4c5c;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0 1.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-send:hover:not(:disabled) {
+  background: #0b3945;
+}
+
+.btn-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #6c757d;
+  font-size: 0.85rem;
+  font-style: italic;
+}
