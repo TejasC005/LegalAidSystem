@@ -3,45 +3,30 @@
 LEXIS — Notification Service (Module 10)
 =============================================================================
 
-MVP: Email notifications via SMTP.
-
-In development mode (ENVIRONMENT=development or SMTP_HOST empty),
-email content is logged to the console instead of actually sent.
-This means all tests and local dev work without any email server.
-
-To enable real email: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
-SMTP_FROM in backend/.env.
-
-Production note: For scale, replace SMTP with a transactional email
-provider (SendGrid, AWS SES, Mailgun) by swapping the _send_smtp() function.
+Proactive deadline reminder notifications via Brevo REST API email and SMS.
+Uses the BrevoEmailProvider abstraction (no SMTP).
 """
 
 import logging
-import smtplib
-import email.mime.text
-import email.mime.multipart
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    """Sends deadline reminder notifications via email (MVP)."""
+    """Sends deadline reminder notifications via Brevo REST email & SMS."""
 
     def __init__(
         self,
-        smtp_host: str,
-        smtp_port: int,
-        smtp_user: str,
-        smtp_pass: str,
-        smtp_from: str,
-        dev_mode: bool = True,
+        email_provider=None,
+        dev_mode: bool = False,
+        **kwargs,  # Gracefully accept legacy kwargs (e.g. smtp_*) without using them
     ):
-        self.smtp_host = smtp_host
-        self.smtp_port = smtp_port
-        self.smtp_user = smtp_user
-        self.smtp_pass = smtp_pass
-        self.smtp_from = smtp_from
+        if email_provider is None:
+            from services.auth.email_provider import get_email_provider
+            self.email_provider = get_email_provider()
+        else:
+            self.email_provider = email_provider
         self.dev_mode = dev_mode
 
     async def send_deadline_notification(
@@ -105,29 +90,25 @@ class NotificationService:
 
         # Channel 1: EMAIL (if pref is email or both)
         if pref in ("email", "both"):
-            if self.dev_mode or not self.smtp_host:
-                logger.info(
-                    "📧 [DEV MODE] Deadline notification email (would be sent in production)",
-                    extra={
-                        "to": user_email or f"user_{user_id}",
-                        "subject": subject,
-                        "days_remaining": days_remaining,
-                        "label": deadline_label,
-                        "has_draft": bool(draft_text),
-                    },
+            if user_email:
+                html_body = f"""<div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+<h2 style="color: #1a6b5a;">⚖️ LEXIS Deadline Reminder</h2>
+<p><strong>Deadline:</strong> {deadline_label}</p>
+<p><strong>Due Date:</strong> {deadline_date} (<strong>{days_remaining} days remaining</strong>)</p>
+<hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+<pre style="background: #f8fafc; padding: 15px; border-radius: 4px; white-space: pre-wrap; font-family: monospace;">{draft_text or 'Please log in to your LEXIS Vault to review your deadline.'}</pre>
+<p style="font-size: 12px; color: #64748b; margin-top: 20px;">— LEXIS Autonomous Legal Aid System</p>
+</div>"""
+                result = await self.email_provider.send_email(
+                    recipient_email=user_email,
+                    subject=subject,
+                    html_content=html_body,
+                    text_content=body,
                 )
-                print(f"\n{'='*60}")
-                print(f"📧 LEXIS EMAIL NOTIFICATION (dev mode — not actually sent)")
-                print(f"To:      {user_email or f'user_{user_id}'}")
-                print(f"Subject: {subject}")
-                print(f"{'─'*60}")
-                print(body)
-                print(f"{'='*60}\n")
-                sent_any = True
-            elif user_email:
-                sent_email = await self._send_smtp(to_email=user_email, subject=subject, body=body)
-                if sent_email:
+                if result.success:
                     sent_any = True
+                else:
+                    logger.warning("Deadline notification email failed for user %s: %s", user_id, result.error)
 
         # Channel 2: SMS (if pref is sms or both)
         if pref in ("sms", "both"):
@@ -147,33 +128,6 @@ class NotificationService:
             sent_any = True
 
         return sent_any
-
-    async def _send_smtp(self, to_email: str, subject: str, body: str) -> bool:
-        """Sends email via SMTP. Returns True on success, False on failure."""
-        import asyncio
-
-        def _send():
-            msg = email.mime.multipart.MIMEMultipart()
-            msg["From"] = self.smtp_from
-            msg["To"] = to_email
-            msg["Subject"] = subject
-            msg.attach(email.mime.text.MIMEText(body, "plain", "utf-8"))
-
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
-                server.ehlo()
-                server.starttls()
-                if self.smtp_user and self.smtp_pass:
-                    server.login(self.smtp_user, self.smtp_pass)
-                server.sendmail(self.smtp_from, to_email, msg.as_string())
-
-        try:
-            # Run synchronous SMTP in a thread to avoid blocking the event loop
-            await asyncio.to_thread(_send)
-            logger.info("Email sent", extra={"to": to_email, "subject": subject})
-            return True
-        except Exception as exc:
-            logger.error("SMTP send failed: %s", exc, exc_info=True)
-            return False
 
     async def _resolve_user_info(self, user_id: str, db) -> tuple[Optional[str], Optional[str], str]:
         """
@@ -215,20 +169,13 @@ def get_notification_service() -> NotificationService:
     if _notification_service is None:
         try:
             from core.config import get_settings
+            from services.auth.email_provider import get_email_provider
             settings = get_settings()
-            dev_mode = settings.ENVIRONMENT == "development" or not settings.SMTP_HOST
             _notification_service = NotificationService(
-                smtp_host=settings.SMTP_HOST,
-                smtp_port=settings.SMTP_PORT,
-                smtp_user=settings.SMTP_USER,
-                smtp_pass=settings.SMTP_PASS,
-                smtp_from=settings.SMTP_FROM,
-                dev_mode=dev_mode,
+                email_provider=get_email_provider(),
+                dev_mode=settings.ENVIRONMENT == "development",
             )
         except Exception:
             # Fallback for tests
-            _notification_service = NotificationService(
-                smtp_host="", smtp_port=587, smtp_user="",
-                smtp_pass="", smtp_from="noreply@lexis.local", dev_mode=True,
-            )
+            _notification_service = NotificationService(dev_mode=True)
     return _notification_service

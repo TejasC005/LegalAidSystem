@@ -74,9 +74,9 @@ function AppLayout() {
         </div>
 
         <div className="app-header__user">
-          {/* Show the user's phone number (or "Anonymous") */}
+          {/* Show the user's email/phone (or "User") */}
           <span className="app-header__phone">
-            {user?.phone || user?.id || 'User'}
+            {user?.email || user?.phone || user?.id || 'User'}
           </span>
           <span className="app-header__role-badge">{user?.role || 'user'}</span>
 

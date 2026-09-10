@@ -143,6 +143,22 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("Could not seed Qdrant knowledge base at startup: %s", exc)
 
+    # 7. Validate Brevo REST API Email Service configuration
+    is_brevo_valid, missing_brevo_fields = settings.validate_brevo_config()
+    if not is_brevo_valid:
+        logger.warning(
+            "⚠️  [CONFIG] Brevo email service is not fully configured (missing: %s). "
+            "Email OTP delivery will fail until valid Brevo credentials are set in backend/.env.",
+            ", ".join(missing_brevo_fields),
+        )
+    elif settings.BREVO_API_KEY.startswith("xsmtpsib-"):
+        logger.warning(
+            "⚠️  [CONFIG] Configured BREVO_API_KEY appears to be an SMTP key (starts with 'xsmtpsib-'). "
+            "Brevo REST API requires an API v3 key starting with 'xkeysib-...' from https://app.brevo.com/settings/keys/api."
+        )
+    else:
+        logger.info("Brevo REST API email service configured for sender: %s", settings.BREVO_SENDER_EMAIL)
+
     logger.info("All connections established. API is ready.")
 
     # ── Hand control to the running app ───────────────────────────────────

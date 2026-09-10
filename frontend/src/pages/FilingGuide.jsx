@@ -70,7 +70,6 @@ function FilingGuide() {
       setIsHandoff(!!draftId);
       handleLookup(draftId, docTypeParam);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadAuthorities = async () => {
