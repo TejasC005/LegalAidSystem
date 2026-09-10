@@ -5,17 +5,21 @@
 # ── Core framework ────────────────────────────────────────────────────────────
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
-pydantic==2.9.2
+pydantic==2.12.5
 pydantic-settings==2.5.2
 
+
+
+
 # ── LLM / Agents ─────────────────────────────────────────────────────────────
-google-genai>=2.20.0
-openai==1.51.0
+google-genai==2.22.0
+openai>=1.109.0,<2.0.0
 tenacity==9.0.0
 
 # ── LangGraph (orchestration engine) ─────────────────────────────────────────
-langgraph>=1.2.11            # StateGraph, Send API, TimeoutPolicy — Module 4+
-langchain-openai>=0.2.0      # ChatOpenAI wrapper used by intent classifier
+langgraph==1.2.11
+langchain-openai>=1.0.0,<2.0.0
+langchain-core>=0.3.0
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 firebase-admin==6.5.0
@@ -58,10 +62,10 @@ python-json-logger==2.0.7  # Structured JSON log formatter
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv==1.0.1
-httpx==0.27.2
+httpx==0.28.1
 python-multipart==0.0.12
 loguru==0.7.2
-
+typing-extensions>=4.12.0
 # ── Security ──────────────────────────────────────────────────────────────────
 cryptography==43.0.1
 slowapi==0.1.9

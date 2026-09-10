@@ -94,7 +94,7 @@ function Settings() {
     try {
       await sendEmailOtp(email.trim());
       setEmailStep('otp');
-      setMsg('Verification OTP sent to email. Check console in dev mode.');
+      setMsg(`A 6-digit verification code was sent to ${email.trim()}.`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to send email OTP.');
     } finally {
@@ -273,16 +273,21 @@ function Settings() {
         </form>
       </section>
 
-      {/* ── Section 2: Secondary Email Verification ── */}
+      {/* ── Section 2: Email Address & Verification ── */}
       <section className="settings-section">
         <h3>
-          ✉️ Secondary Email Channel
+          ✉️ Email Address & Verification
           {emailVerified ? (
             <span className="status-badge verified">Verified</span>
           ) : (
-            <span className="status-badge unverified">Unverified / Optional</span>
+            <span className="status-badge unverified">Unverified</span>
           )}
         </h3>
+        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          {emailVerified
+            ? 'Your email address is verified and active for authentication and deadline reminders.'
+            : 'Verify your email address to receive one-time sign-in codes and legal deadline alerts.'}
+        </p>
 
         <div className="email-verify-box">
           {emailStep === 'input' ? (
@@ -298,7 +303,7 @@ function Settings() {
               />
               {!emailVerified && (
                 <button type="submit" className="btn btn-primary" disabled={loading || !email}>
-                  Send Verification OTP
+                  Send Verification Code
                 </button>
               )}
             </form>
@@ -306,15 +311,17 @@ function Settings() {
             <form onSubmit={handleVerifyEmailOtp} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <input
                 type="text"
-                placeholder="Enter 6-digit OTP"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="6-digit code"
                 value={emailOtp}
-                onChange={(e) => setEmailOtp(e.target.value)}
+                onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 disabled={loading}
                 className="input-field"
-                style={{ width: '180px' }}
+                style={{ width: '180px', textAlign: 'center', letterSpacing: '0.2em', fontWeight: 'bold' }}
               />
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                Verify OTP
+              <button type="submit" className="btn btn-primary" disabled={loading || emailOtp.length !== 6}>
+                Verify Code
               </button>
               <button type="button" className="btn btn-ghost" onClick={() => setEmailStep('input')}>
                 Cancel

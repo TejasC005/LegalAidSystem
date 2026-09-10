@@ -38,6 +38,9 @@ MOCK_SETTINGS.OTP_RATE_LIMIT_WINDOW_SECONDS = 60
 MOCK_SETTINGS.ENVIRONMENT = "test"
 MOCK_SETTINGS.APP_NAME = "LEXIS API"
 MOCK_SETTINGS.APP_VERSION = "1.0.0"
+MOCK_SETTINGS.BREVO_API_KEY = ""
+MOCK_SETTINGS.BREVO_SENDER_EMAIL = "noreply@lexis.local"
+MOCK_SETTINGS.BREVO_SENDER_NAME = "LEXIS"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -236,3 +239,114 @@ async def test_token_refresh_works():
         payload = decode_token(body["access_token"])
         assert payload["sub"] == "user456"
         assert payload["role"] == "user"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 6: Verify Firebase ID Token
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_verify_firebase_token_works():
+    """
+    POST /auth/verify-firebase-token with a valid token returns LEXIS access and refresh tokens.
+    """
+    app = build_test_app()
+    mock_claims = {"uid": "fb_12345", "phone_number": "+919876543210"}
+
+    with patch("api.routes.auth.verify_firebase_id_token", return_value=mock_claims), \
+         patch("services.auth.jwt_service.settings", MOCK_SETTINGS):
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/v1/auth/verify-firebase-token", json={"id_token": "valid_fb_token"})
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert "access_token" in body
+        assert "refresh_token" in body
+        assert body["role"] == "user"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 7: Email OTP flow success
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_email_otp_flow_success():
+    """
+    Full Email OTP flow — send OTP to email, then verify with correct code → tokens issued.
+    """
+    stored_otp = json.dumps({"otp": "654321", "attempts": 0}).encode()
+    app = build_test_app(redis_get_value=stored_otp, redis_incr_value=1)
+
+    from services.auth.email_provider import EmailSendResult
+
+    MOCK_SETTINGS.BREVO_API_KEY = "xkeysib-mock-key"
+    mock_res = EmailSendResult(success=True, message_id="msg-test-auth")
+
+    with patch("services.auth.jwt_service.settings", MOCK_SETTINGS), \
+         patch("services.auth.otp_service.settings", MOCK_SETTINGS), \
+         patch("api.middleware.rate_limit.settings", MOCK_SETTINGS), \
+         patch("services.auth.email_provider.BrevoEmailProvider.send_email", new_callable=AsyncMock, return_value=mock_res):
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            # 1. Send OTP to email
+            r1 = await c.post("/api/v1/auth/send-otp", json={"email": "citizen@example.com"})
+            assert r1.status_code == 200, r1.text
+            assert "OTP sent" in r1.json()["message"]
+
+            # 2. Verify OTP with correct code
+            r2 = await c.post("/api/v1/auth/verify-otp",
+                              json={"email": "citizen@example.com", "otp": "654321"})
+            assert r2.status_code == 200, r2.text
+            body = r2.json()
+            assert "access_token" in body
+            assert "refresh_token" in body
+            assert body["role"] == "user"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 8: Email OTP rate limiting
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_email_otp_rate_limit_triggers():
+    """
+    When Redis INCR returns a value > OTP_RATE_LIMIT_MAX for email,
+    the endpoint returns HTTP 429.
+    """
+    app = build_test_app(redis_incr_value=4)
+
+    with patch("api.middleware.rate_limit.settings", MOCK_SETTINGS), \
+         patch("services.auth.otp_service.settings", MOCK_SETTINGS):
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/v1/auth/send-otp", json={"email": "citizen@example.com"})
+
+    assert resp.status_code == 429
+    assert "Too many OTP requests" in resp.json()["detail"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 9: Email OTP invalid code
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_email_otp_invalid_code_rejected():
+    """
+    Submitting an incorrect code for an email OTP returns HTTP 401.
+    """
+    stored_otp = json.dumps({"otp": "654321", "attempts": 0}).encode()
+    app = build_test_app(redis_get_value=stored_otp, redis_incr_value=1)
+
+    with patch("services.auth.jwt_service.settings", MOCK_SETTINGS), \
+         patch("services.auth.otp_service.settings", MOCK_SETTINGS), \
+         patch("api.middleware.rate_limit.settings", MOCK_SETTINGS):
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/v1/auth/verify-otp",
+                                json={"email": "citizen@example.com", "otp": "000000"})
+
+    assert resp.status_code == 401
+    assert "Invalid or expired OTP" in resp.json()["detail"]
+
+

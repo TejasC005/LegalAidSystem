@@ -49,15 +49,13 @@ from models.user import (
     UserRole,
     VerifyEmailOTPRequest,
 )
-from services.auth.email_provider import DevLogEmailProvider
+from services.auth.email_provider import get_email_provider
 from services.auth.otp_service import send_email_otp, verify_email_otp
 from services.storage.secure_storage import get_storage_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["User Profile & Management"])
-
-_email_provider = DevLogEmailProvider()
 
 
 def _require_real_user(current_user: dict) -> str:
@@ -90,12 +88,14 @@ async def send_email_otp_endpoint(
     """
     _require_real_user(current_user)
     redis = request.app.state.redis
+    provider = get_email_provider()
 
-    success = await send_email_otp(body.email, redis, _email_provider)
+    success = await send_email_otp(body.email, redis, provider)
     if not success:
+        error_detail = getattr(provider, "last_error", None) or "Failed to send email OTP. Please try again."
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Failed to send email OTP. Please try again.",
+            detail=error_detail,
         )
     return {"message": "Email OTP sent successfully. Valid for 5 minutes."}
 

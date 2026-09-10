@@ -103,23 +103,45 @@ api.interceptors.response.use(
 // Keeping them here means if the URL ever changes, you only fix it in one place.
 
 /**
- * Step 1 of login: ask the backend to send an OTP to a phone number.
- * @param {string} phone  E.164 format, e.g. "+919876543210"
- * @returns {Promise}     Resolves with the axios response object
+ * Step 1 of login: request an OTP for an email address (or phone number).
+ * @param {string|object} target  Email address (e.g. "citizen@example.com") or { email } / { phone }
+ * @returns {Promise}             Resolves with the axios response object
  */
-export function sendOtp(phone) {
-  return api.post('/api/v1/auth/send-otp', { phone });
+export function sendOtp(target) {
+  const payload = typeof target === 'string'
+    ? (target.includes('@') ? { email: target.trim().toLowerCase() } : { phone: target.trim() })
+    : target;
+  return api.post('/api/v1/auth/send-otp', payload);
 }
 
 /**
- * Step 2 of login: submit the OTP the user received.
- * @param {string} phone  Same phone as step 1
- * @param {string} otp    6-digit code from the backend logs (dev mode)
- * @returns {Promise}     Resolves with { access_token, refresh_token, role }
+ * Step 2 of login: submit the OTP received.
+ * @param {string|object} target  Email address or phone number, or object { email, otp }
+ * @param {string} [otp]          6-digit code
+ * @returns {Promise}             Resolves with { access_token, refresh_token, role }
  */
-export function verifyOtp(phone, otp) {
-  return api.post('/api/v1/auth/verify-otp', { phone, otp });
+export function verifyOtp(target, otp) {
+  let payload;
+  if (typeof target === 'object') {
+    payload = target;
+  } else if (typeof target === 'string' && target.includes('@')) {
+    payload = { email: target.trim().toLowerCase(), otp: otp?.trim() };
+  } else {
+    payload = { phone: target?.trim(), otp: otp?.trim() };
+  }
+  return api.post('/api/v1/auth/verify-otp', payload);
 }
+
+/**
+ * Exchange Firebase ID token for LEXIS JWT access + refresh tokens (legacy).
+ * @param {string} idToken  Firebase user ID token
+ * @param {string} phone    Phone number verified by Firebase
+ * @returns {Promise}       Resolves with { access_token, refresh_token, role }
+ */
+export function verifyFirebaseToken(idToken, phone) {
+  return api.post('/api/v1/auth/verify-firebase-token', { id_token: idToken, phone });
+}
+
 
 /**
  * Get the currently-logged-in user's profile.

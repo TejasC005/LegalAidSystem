@@ -88,18 +88,26 @@ def client(test_app):
 
 @pytest.mark.asyncio
 async def test_email_otp_send_and_verify_flow(mock_redis):
-    from services.auth.email_provider import DevLogEmailProvider
+    from services.auth.email_provider import BrevoEmailProvider, EmailSendResult
     from services.auth.otp_service import send_email_otp, verify_email_otp
 
-    provider = DevLogEmailProvider(dev_mode=True)
+    provider = BrevoEmailProvider(
+        api_key="xkeysib-test-key",
+        sender_email="test@lexis.local",
+        sender_name="LEXIS",
+    )
     email = "citizen@example.com"
 
-    # Send OTP
-    success = await send_email_otp(email, mock_redis, provider)
-    assert success is True
-    mock_redis.setex.assert_called_once()
-    key_used = mock_redis.setex.call_args[0][0]
-    assert key_used == "otp:email:citizen@example.com"
+    with patch.object(provider, "send_email", new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = EmailSendResult(success=True, message_id="msg-test-123")
+
+        # Send OTP
+        success = await send_email_otp(email, mock_redis, provider)
+        assert success is True
+        mock_send.assert_called_once()
+        mock_redis.setex.assert_called_once()
+        key_used = mock_redis.setex.call_args[0][0]
+        assert key_used == "otp:email:citizen@example.com"
 
     stored_payload = mock_redis.setex.call_args[0][2]
     otp_code = json.loads(stored_payload)["otp"]
@@ -232,8 +240,11 @@ def test_profile_picture_upload_validation(client, mock_mongo_db):
 @pytest.mark.asyncio
 async def test_notification_preference_respected():
     from services.notifications.notification_service import NotificationService
+    from services.auth.email_provider import EmailSendResult
 
-    service = NotificationService(smtp_host="", smtp_port=587, smtp_user="", smtp_pass="", smtp_from="noreply@lexis.local", dev_mode=True)
+    mock_email_provider = AsyncMock()
+    mock_email_provider.send_email = AsyncMock(return_value=EmailSendResult(success=True, message_id="msg-notif-1"))
+    service = NotificationService(email_provider=mock_email_provider)
 
     # Test preference: 'sms'
     mock_db_sms = MagicMock()
@@ -246,20 +257,19 @@ async def test_notification_preference_respected():
     })
     mock_db_sms.__getitem__.return_value = user_sms_query
 
-    with patch.object(service, "_send_smtp", new_callable=AsyncMock) as mock_smtp:
-        sent = await service.send_deadline_notification(
-            user_id="user-123",
-            deadline_label="Rent Deadline",
-            deadline_date="2026-09-01",
-            days_remaining=3,
-            draft_text="Draft notice",
-            db=mock_db_sms,
-        )
-        assert sent is True
-        mock_smtp.assert_not_called()  # SMTP not called for SMS-only preference
+    sent = await service.send_deadline_notification(
+        user_id="user-123",
+        deadline_label="Rent Deadline",
+        deadline_date="2026-09-01",
+        days_remaining=3,
+        draft_text="Draft notice",
+        db=mock_db_sms,
+    )
+    assert sent is True
+    mock_email_provider.send_email.assert_not_called()  # Email not sent for SMS-only preference
 
-    # Test preference: 'email' (in non-dev mode to test _send_smtp call)
-    service_email = NotificationService(smtp_host="smtp.gmail.com", smtp_port=587, smtp_user="u", smtp_pass="p", smtp_from="f", dev_mode=False)
+    # Test preference: 'email'
+    mock_email_provider.send_email.reset_mock()
     mock_db_email = MagicMock()
     user_email_query = MagicMock()
     user_email_query.find_one = AsyncMock(return_value={
@@ -270,17 +280,16 @@ async def test_notification_preference_respected():
     })
     mock_db_email.__getitem__.return_value = user_email_query
 
-    with patch.object(service_email, "_send_smtp", new_callable=AsyncMock, return_value=True) as mock_smtp:
-        sent_e = await service_email.send_deadline_notification(
-            user_id="user-456",
-            deadline_label="Property Tax",
-            deadline_date="2026-09-15",
-            days_remaining=15,
-            draft_text="Draft letter",
-            db=mock_db_email,
-        )
-        assert sent_e is True
-        mock_smtp.assert_called_once()
+    sent_e = await service.send_deadline_notification(
+        user_id="user-456",
+        deadline_label="Property Tax",
+        deadline_date="2026-09-15",
+        days_remaining=15,
+        draft_text="Draft letter",
+        db=mock_db_email,
+    )
+    assert sent_e is True
+    mock_email_provider.send_email.assert_called_once()
 
 
 # ── Test 6: Account Deletion Cascades & Leaves No Orphaned Records ───────────

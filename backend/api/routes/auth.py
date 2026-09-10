@@ -30,7 +30,9 @@ from models.user import (
     UserOut,
     UserRole,
     VerifyOTPRequest,
+    VerifyFirebaseTokenRequest,
 )
+from services.auth.firebase_service import verify_firebase_id_token
 from services.auth.jwt_service import (
     REFRESH_TOKEN_TYPE,
     create_access_token,
@@ -38,8 +40,9 @@ from services.auth.jwt_service import (
     create_refresh_token,
     decode_token,
 )
+from services.auth.email_provider import get_email_provider
 from services.auth.otp_provider import DevLogOTPProvider
-from services.auth.otp_service import send_otp, verify_otp
+from services.auth.otp_service import send_otp, verify_otp, send_email_otp, verify_email_otp
 
 logger = logging.getLogger(__name__)
 
@@ -54,23 +57,39 @@ _otp_provider = DevLogOTPProvider()
 @router.post(
     "/send-otp",
     status_code=status.HTTP_200_OK,
-    summary="Request an OTP (rate-limited per phone)",
+    summary="Request an OTP (rate-limited per email/phone)",
     dependencies=[Depends(otp_rate_limit)],  # Rate limit applied BEFORE handler
 )
 async def send_otp_endpoint(body: SendOTPRequest, request: Request):
     """
-    Sends a 6-digit OTP to the given phone number.
-    Rate limited: max 3 requests per 60 seconds per phone number.
+    Sends a 6-digit OTP to the given email address or phone number.
+    Rate limited: max 3 requests per 60 seconds.
 
-    In dev mode, the OTP is printed to server logs instead of sent via SMS.
+    When email is supplied, Brevo transactional email service delivers the code.
+    In dev mode (or if BREVO_API_KEY is not set), OTP is printed to server logs.
     """
     redis = request.app.state.redis
-    success = await send_otp(body.phone, redis, _otp_provider)
+    if body.email:
+        email = body.email.lower().strip()
+        provider = get_email_provider()
+        success = await send_email_otp(email, redis, provider)
+    elif body.phone:
+        success = await send_otp(body.phone, redis, _otp_provider)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either email or phone must be provided.",
+        )
 
     if not success:
+        error_detail = "Failed to send OTP. Please try again."
+        if body.email:
+            provider = get_email_provider()
+            if getattr(provider, "last_error", None):
+                error_detail = provider.last_error
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Failed to send OTP. Please try again.",
+            detail=error_detail,
         )
 
     return {"message": "OTP sent successfully. Valid for 5 minutes."}
@@ -85,7 +104,7 @@ async def send_otp_endpoint(body: SendOTPRequest, request: Request):
 )
 async def verify_otp_endpoint(body: VerifyOTPRequest, request: Request):
     """
-    Verifies the OTP.  On success:
+    Verifies the OTP (by email or phone). On success:
       - Creates a user in MongoDB if this is their first login (signup).
       - Updates the user record on subsequent logins.
       - Issues an access token (15 min) + refresh token (7 days).
@@ -95,7 +114,18 @@ async def verify_otp_endpoint(body: VerifyOTPRequest, request: Request):
     from datetime import timezone
     db = request.app.state.mongo_client[request.app.state.mongo_db_name]
 
-    otp_valid = await verify_otp(body.phone, body.otp, redis)
+    if body.email:
+        email = body.email.lower().strip()
+        otp_valid = await verify_email_otp(email, body.otp, redis)
+        identifier_query = {"email": email}
+    elif body.phone:
+        otp_valid = await verify_otp(body.phone, body.otp, redis)
+        identifier_query = {"phone": body.phone}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either email or phone must be provided.",
+        )
 
     if not otp_valid:
         raise HTTPException(
@@ -107,25 +137,36 @@ async def verify_otp_endpoint(body: VerifyOTPRequest, request: Request):
     users_col = db["users"]
     now = datetime.now(timezone.utc)
 
-    existing = await users_col.find_one({"phone": body.phone})
+    existing = await users_col.find_one(identifier_query)
     if existing:
         user_id = str(existing["_id"])
         role = existing.get("role", UserRole.USER.value)
-        await users_col.update_one({"_id": existing["_id"]}, {"$set": {"updated_at": now}})
+        update_fields = {"updated_at": now}
+        if body.email:
+            update_fields["email"] = body.email.lower().strip()
+            update_fields["email_verified"] = True
+        if body.phone:
+            update_fields["phone"] = body.phone
+        await users_col.update_one({"_id": existing["_id"]}, {"$set": update_fields})
         logger.info("Existing user logged in", extra={"user_id": user_id})
     else:
         new_id = ObjectId()
         user_id = str(new_id)
         role = UserRole.USER.value
-        await users_col.insert_one({
+        user_doc = {
             "_id": new_id,
-            "phone": body.phone,
             "role": role,
             "is_anonymous": False,
             "is_active": True,
             "created_at": now,
             "updated_at": now,
-        })
+        }
+        if body.email:
+            user_doc["email"] = body.email.lower().strip()
+            user_doc["email_verified"] = True
+        if body.phone:
+            user_doc["phone"] = body.phone
+        await users_col.insert_one(user_doc)
         logger.info("New user created", extra={"user_id": user_id})
 
     access_token = create_access_token(user_id, role)
@@ -136,6 +177,75 @@ async def verify_otp_endpoint(body: VerifyOTPRequest, request: Request):
         refresh_token=refresh_token,
         role=UserRole(role),
     )
+
+
+# ── POST /auth/verify-firebase-token ─────────────────────────────────────────
+
+@router.post(
+    "/verify-firebase-token",
+    response_model=TokenResponse,
+    summary="Verify Firebase ID token and receive LEXIS JWT tokens",
+)
+async def verify_firebase_token_endpoint(body: VerifyFirebaseTokenRequest, request: Request):
+    """
+    Verifies a Firebase ID token generated after client-side Phone Auth verification.
+    Upserts user in MongoDB and issues access + refresh JWT tokens.
+    """
+    from datetime import timezone
+
+    try:
+        claims = verify_firebase_id_token(body.id_token)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        )
+
+    phone = claims.get("phone_number") or body.phone
+    if not phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number could not be determined from Firebase token.",
+        )
+
+    db = request.app.state.mongo_client[request.app.state.mongo_db_name]
+    users_col = db["users"]
+    now = datetime.now(timezone.utc)
+
+    existing = await users_col.find_one({"phone": phone})
+    if existing:
+        user_id = str(existing["_id"])
+        role = existing.get("role", UserRole.USER.value)
+        await users_col.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"updated_at": now, "firebase_uid": claims.get("uid")}}
+        )
+        logger.info("Existing user logged in via Firebase Auth", extra={"user_id": user_id})
+    else:
+        new_id = ObjectId()
+        user_id = str(new_id)
+        role = UserRole.USER.value
+        await users_col.insert_one({
+            "_id": new_id,
+            "phone": phone,
+            "role": role,
+            "firebase_uid": claims.get("uid"),
+            "is_anonymous": False,
+            "is_active": True,
+            "created_at": now,
+            "updated_at": now,
+        })
+        logger.info("New user created via Firebase Auth", extra={"user_id": user_id})
+
+    access_token = create_access_token(user_id, role)
+    refresh_token = create_refresh_token(user_id, role)
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        role=UserRole(role),
+    )
+
 
 
 # ── POST /auth/refresh ────────────────────────────────────────────────────────
@@ -237,7 +347,7 @@ async def get_me(
 
     return UserOut(
         id=str(doc["_id"]),
-        phone=doc["phone"],
+        phone=doc.get("phone"),
         email=doc.get("email"),
         email_verified=doc.get("email_verified", False),
         role=UserRole(doc["role"]),

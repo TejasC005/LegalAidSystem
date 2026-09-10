@@ -43,19 +43,19 @@ async def otp_rate_limit(request: Request) -> None:
         @router.post("/send-otp", dependencies=[Depends(otp_rate_limit)])
         async def send_otp_endpoint(...):
     """
-    # Parse body to extract phone — we need it before the route handler runs
+    # Parse body to extract email or phone — we need it before the route handler runs
     try:
         body = await request.json()
-        phone = body.get("phone", "").strip()
+        target = (body.get("email") or "").strip().lower() or (body.get("phone") or "").strip()
     except Exception:
-        phone = ""
+        target = ""
 
-    if not phone:
-        # If phone is missing, the request validator will catch it — not our job here
+    if not target:
+        # If target is missing, the request validator will catch it — not our job here
         return
 
     redis = request.app.state.redis
-    redis_key = f"rl:otp:{phone}"
+    redis_key = f"rl:otp:{target}"
 
     # Atomically increment the counter
     current_count = await redis.incr(redis_key)
@@ -64,11 +64,11 @@ async def otp_rate_limit(request: Request) -> None:
         # First request in this window — set the TTL
         await redis.expire(redis_key, settings.OTP_RATE_LIMIT_WINDOW_SECONDS)
 
-    masked_phone = phone[:3] + "****" + phone[-3:] if len(phone) > 6 else "***"
+    masked_target = target[:3] + "****" + target[-3:] if len(target) > 6 else "***"
     logger.debug(
         "OTP rate limit check",
         extra={
-            "phone_masked": masked_phone,
+            "target_masked": masked_target,
             "count": current_count,
             "max": settings.OTP_RATE_LIMIT_MAX,
         },
@@ -77,12 +77,12 @@ async def otp_rate_limit(request: Request) -> None:
     if current_count > settings.OTP_RATE_LIMIT_MAX:
         logger.warning(
             "OTP rate limit exceeded",
-            extra={"phone_masked": masked_phone, "count": current_count},
+            extra={"target_masked": masked_target, "count": current_count},
         )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=(
-                f"Too many OTP requests for this phone number. "
+                f"Too many OTP requests. "
                 f"Please wait {settings.OTP_RATE_LIMIT_WINDOW_SECONDS} seconds before trying again."
             ),
             headers={"Retry-After": str(settings.OTP_RATE_LIMIT_WINDOW_SECONDS)},
