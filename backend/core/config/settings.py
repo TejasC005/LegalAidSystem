@@ -8,7 +8,11 @@ instead of silently using a wrong default.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_ENV_FILE = _BACKEND_DIR / ".env"
 
 
 class Settings(BaseSettings):
@@ -54,6 +58,7 @@ class Settings(BaseSettings):
     FIREBASE_PROJECT_ID: str = ""
     FIREBASE_PRIVATE_KEY: str = ""
     FIREBASE_CLIENT_EMAIL: str = ""
+    FIREBASE_SERVICE_ACCOUNT_PATH: str = "firebase/service_account.json"
 
     # ── Qdrant Vector DB (Module 5) ───────────────────────────────────────
     QDRANT_HOST: str = "localhost"
@@ -97,22 +102,19 @@ class Settings(BaseSettings):
     # Sessions older than this are automatically expired from Redis.
     SESSION_TTL_SECONDS: int = 86_400
 
-    # ── Email Notifications (Module 10) ──────────────────────────────────────
-    # SMTP settings for deadline reminder emails.
-    # In ENVIRONMENT=development or when SMTP_HOST is empty, emails are logged
-    # to the console instead of being sent — no real SMTP server needed for dev/tests.
-    SMTP_HOST: str = ""                  # e.g. smtp.gmail.com
-    SMTP_PORT: int = 587                 # TLS port (use 465 for SSL)
-    SMTP_USER: str = ""                  # SMTP login username
-    SMTP_PASS: str = ""                  # SMTP login password
-    SMTP_FROM: str = "noreply@lexis.local"  # From address in sent emails
+    # ── Email Notifications & Brevo REST API ──────────────────────────────────
+    # Brevo (formerly Sendinblue) v3 REST API for transactional emails & Email OTP.
+    # Uses https://api.brevo.com/v3/smtp/email with api-key header.
+    BREVO_API_KEY: str = ""
+    BREVO_SENDER_EMAIL: str = "noreply@lexis.local"
+    BREVO_SENDER_NAME: str = "LEXIS"
 
     # ── Scheduling ────────────────────────────────────────────────────────────
     NOTIFICATION_CHECK_INTERVAL_MINUTES: int = 60
 
     # Pydantic v2 config: look for a .env file in the backend directory
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_ENV_FILE, ".env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",  # silently ignore any unrecognised env vars
@@ -122,6 +124,21 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """True when running in a production environment."""
         return self.ENVIRONMENT.lower() == "production"
+
+    def validate_brevo_config(self) -> tuple[bool, list[str]]:
+        """
+        Validates Brevo configuration at startup or service initialization.
+        Returns (is_valid, list_of_missing_fields).
+        Never exposes the API key.
+        """
+        missing = []
+        if not (self.BREVO_API_KEY or "").strip():
+            missing.append("BREVO_API_KEY")
+        if not (self.BREVO_SENDER_EMAIL or "").strip():
+            missing.append("BREVO_SENDER_EMAIL")
+        if not (self.BREVO_SENDER_NAME or "").strip():
+            missing.append("BREVO_SENDER_NAME")
+        return len(missing) == 0, missing
 
 
 @lru_cache(maxsize=1)

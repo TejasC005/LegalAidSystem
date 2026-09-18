@@ -17,7 +17,7 @@ Why separate "UserDocument" from "UserOut"?
 from datetime import datetime
 from enum import Enum
 from typing import Optional, List, Any, Dict
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from bson import ObjectId
 
 
@@ -78,8 +78,8 @@ class UserDocument(BaseModel):
     Email is an optional/secondary verification channel.
     """
     id: Optional[str] = Field(None, alias="_id")
-    phone: str                              # E.164 format, e.g. +919876543210
-    email: Optional[str] = None             # Optional secondary channel (unique when set)
+    phone: Optional[str] = None             # E.164 format or None if registering via email
+    email: Optional[str] = None             # Email address (primary or secondary channel)
     email_verified: bool = False
     role: UserRole = UserRole.USER
     is_anonymous: bool = False
@@ -95,18 +95,43 @@ class UserDocument(BaseModel):
 
 class SendOTPRequest(BaseModel):
     """Body for POST /auth/send-otp"""
-    phone: str = Field(
-        ...,
+    phone: Optional[str] = Field(
+        None,
         pattern=r"^\+?[1-9]\d{9,14}$",
         description="Phone number in E.164 format, e.g. +919876543210",
         examples=["+919876543210"],
     )
+    email: Optional[EmailStr] = Field(
+        None,
+        description="Email address for OTP verification",
+        examples=["citizen@example.com"],
+    )
+
+    @model_validator(mode="after")
+    def check_identifier_provided(self):
+        if not self.phone and not self.email:
+            raise ValueError("Either email or phone must be provided to send OTP.")
+        return self
 
 
 class VerifyOTPRequest(BaseModel):
     """Body for POST /auth/verify-otp"""
-    phone: str = Field(..., description="Same phone used in send-otp")
+    phone: Optional[str] = Field(None, description="Phone used in send-otp")
+    email: Optional[EmailStr] = Field(None, description="Email used in send-otp")
     otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP")
+
+    @model_validator(mode="after")
+    def check_identifier_provided(self):
+        if not self.phone and not self.email:
+            raise ValueError("Either email or phone must be provided to verify OTP.")
+        return self
+
+
+class VerifyFirebaseTokenRequest(BaseModel):
+    """Body for POST /auth/verify-firebase-token"""
+    id_token: str = Field(..., description="Firebase ID token from client SDK")
+    phone: Optional[str] = Field(None, description="Optional phone number fallback if not in token claims")
+
 
 
 class SendEmailOTPRequest(BaseModel):
@@ -173,7 +198,7 @@ class UserOut(BaseModel):
     Never contains OTPs, hashes, or internal flags.
     """
     id: str
-    phone: str
+    phone: Optional[str] = None
     email: Optional[str] = None
     email_verified: bool = False
     role: UserRole
@@ -186,7 +211,7 @@ class UserOut(BaseModel):
 class UserExportResponse(BaseModel):
     """Returned by GET /users/me/export — data dump for the citizen."""
     user_id: str
-    phone: str
+    phone: Optional[str] = None
     email: Optional[str] = None
     email_verified: bool = False
     created_at: str

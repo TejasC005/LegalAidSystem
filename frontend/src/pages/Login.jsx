@@ -1,226 +1,456 @@
 /*
  * frontend/src/pages/Login.jsx
  * ──────────────────────────────────────────────────────────────────────────────
- * LEXIS — Login Page (Module 3)
+ * LEXIS — Login Page (Email OTP with Brevo Service)
  *
- * HOW THE TWO-STEP LOGIN FLOW WORKS:
- *   Step 1 (PHONE):  User enters their phone number → clicks "Send OTP"
- *                    → calls POST /api/v1/auth/send-otp
- *                    → OTP appears in the BACKEND TERMINAL (dev mode)
+ * TWO-STEP LOGIN FLOW:
+ *   Step 1 (EMAIL): User enters their email address → clicks "Send Verification Code"
+ *                   → calls POST /api/v1/auth/send-otp with { email }
+ *                   → Brevo delivers 6-digit OTP to inbox (or terminal in dev mode)
  *
- *   Step 2 (OTP):    User types the OTP from the terminal → clicks "Verify"
- *                    → calls POST /api/v1/auth/verify-otp
- *                    → on success: tokens saved, redirected to /dashboard
+ *   Step 2 (OTP):   User enters the 6-digit code → clicks "Verify & Sign in"
+ *                   → calls POST /api/v1/auth/verify-otp with { email, otp }
+ *                   → on success: JWT tokens saved, redirected to /
  *
- * We track which step we're on with a `step` state variable:
- *   'phone' → show phone input
- *   'otp'   → show OTP input
- *
- * STATE VARIABLES (useState):
- *   phone    — what the user typed in the phone field
- *   otp      — what the user typed in the OTP field
- *   step     — 'phone' or 'otp'
- *   loading  — true while a network request is in flight (disables the button)
- *   error    — an error message string (shown in red below the form)
+ * RELIABILITY FEATURES:
+ *   - 60s Resend countdown cooldown timer
+ *   - "Change email" action to rectify typos without refreshing
+ *   - Clean error feedback & loading states
+ *   - No external third-party captcha dependencies
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { sendOtp, verifyOtp, getMe } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
+const RESEND_COOLDOWN_SECONDS = 60;
+const OTP_LENGTH = 6;
 
 function Login() {
   // ── Read auth context ──────────────────────────────────────────────────
   const { isAuthenticated, login } = useAuth();
 
   // ── Local state ────────────────────────────────────────────────────────
-  const [phone,   setPhone]   = useState('');    // e.g. +919876543210
-  const [otp,     setOtp]     = useState('');    // 6-digit code
-  const [step,    setStep]    = useState('phone'); // 'phone' | 'otp'
+  const [email, setEmail] = useState('');
+  const [otpDigits, setOtpDigits] = useState(Array(OTP_LENGTH).fill(''));
+  const [step, setStep] = useState('email'); // 'email' | 'otp'
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
+  // References to the 6 individual OTP digit inputs
+  const inputRefs = useRef([]);
+
+  // ── Resend cooldown countdown timer ────────────────────────────────────
+  useEffect(() => {
+    let timer;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [resendCooldown]);
+
+  // ── Auto-focus first digit when entering OTP step ─────────────────────
+  useEffect(() => {
+    if (step === 'otp') {
+      const firstEmptyIndex = otpDigits.findIndex((d) => !d);
+      const targetIndex = firstEmptyIndex === -1 ? 0 : firstEmptyIndex;
+      inputRefs.current[targetIndex]?.focus();
+    }
+  }, [step]);
 
   // ── If already logged in, skip the login page entirely ────────────────
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
+  // Helper to validate email format
+  function isValidEmail(val) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+  }
 
-  // ── Step 1 handler: send OTP ──────────────────────────────────────────
+  // ── Step 1 handler: Send OTP via Brevo Email Service ──────────────────
   async function handleSendOtp(e) {
-    // e.preventDefault() stops the browser from refreshing the page
-    // (the default behaviour of a form submit).
-    e.preventDefault();
+    if (e) e.preventDefault();
     setError('');
+    setInfo('');
 
-    // Basic validation — backend also validates, but this avoids a round-trip
-    if (!phone.trim()) {
-      setError('Please enter your phone number.');
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setError('Please enter your email address.');
+      return;
+    }
+
+    if (!isValidEmail(trimmedEmail)) {
+      setError('Please enter a valid email address (e.g. name@example.com).');
       return;
     }
 
     setLoading(true);
     try {
-      await sendOtp(phone.trim());
-      // OTP was sent — move to the next step
+      await sendOtp(trimmedEmail);
+      setEmail(trimmedEmail);
+      setOtpDigits(Array(OTP_LENGTH).fill(''));
       setStep('otp');
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setInfo(`A 6-digit verification code has been dispatched to ${trimmedEmail}. Please check your inbox.`);
     } catch (err) {
-      // err.response?.data?.detail is the FastAPI error message from the backend
-      setError(err.response?.data?.detail || 'Failed to send OTP. Try again.');
+      console.error('Send OTP error:', err);
+      const msg = err.response?.data?.detail || err.message || 'Failed to send verification code. Please try again.';
+      setError(msg);
     } finally {
-      // finally always runs — we always want to stop the loading spinner
       setLoading(false);
     }
   }
 
-
-  // ── Step 2 handler: verify OTP ────────────────────────────────────────
-  async function handleVerifyOtp(e) {
-    e.preventDefault();
+  // ── Resend OTP handler ────────────────────────────────────────────────
+  async function handleResendOtp() {
+    if (resendCooldown > 0 || loading) return;
     setError('');
+    setInfo('');
+    setLoading(true);
 
-    if (!otp.trim()) {
-      setError('Please enter the OTP.');
+    try {
+      await sendOtp(email);
+      setOtpDigits(Array(OTP_LENGTH).fill(''));
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setInfo('A fresh verification code has been dispatched to your email.');
+      inputRefs.current[0]?.focus();
+    } catch (err) {
+      console.error('Resend OTP error:', err);
+      const msg = err.response?.data?.detail || err.message || 'Failed to resend code. Please wait a moment.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Step 2 handler: Core OTP Verification ─────────────────────────────
+  async function handleVerifyCode(codeToVerify) {
+    const code = (codeToVerify || otpDigits.join('')).trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!code || code.length !== OTP_LENGTH) {
+      setError(`Please enter the complete ${OTP_LENGTH}-digit verification code.`);
       return;
     }
 
+    setError('');
+    setInfo('');
     setLoading(true);
+
     try {
-      // Call verify-otp — returns { access_token, refresh_token, role }
-      const tokenResponse = await verifyOtp(phone.trim(), otp.trim());
+      // 1. Verify OTP with LEXIS Backend
+      const tokenResponse = await verifyOtp(trimmedEmail, code);
       const tokens = tokenResponse.data;
 
-      // Store the access token in localStorage temporarily so getMe() can use
-      // the Axios interceptor (which reads from localStorage).
+      // Store access token in localStorage for getMe()
       localStorage.setItem('lexis_access_token', tokens.access_token);
 
-      // Fetch the full user profile from /auth/me
+      // 2. Fetch full citizen profile
       let userObj;
       try {
         const meResponse = await getMe();
         userObj = meResponse.data;
       } catch {
-        // If /me fails, build a minimal user object from the token response.
-        // This still lets the user in; we'll retry /me later.
-        userObj = { role: tokens.role, phone: phone.trim() };
+        userObj = { role: tokens.role, email: trimmedEmail };
       }
 
-      // login() saves tokens + user to context and localStorage, then navigates to /
+      // 3. Complete authentication
       login(tokens, userObj);
-
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid OTP. Please try again.');
-      // Clean up the temp token we set above
+      console.error('OTP verification error:', err);
       localStorage.removeItem('lexis_access_token');
+      const msg = err.response?.data?.detail || err.message || 'Verification failed. Please check the code and try again.';
+      setError(msg);
+      inputRefs.current[0]?.focus();
+      inputRefs.current[0]?.select();
     } finally {
       setLoading(false);
     }
   }
 
+  function handleFormSubmit(e) {
+    e.preventDefault();
+    handleVerifyCode(otpDigits.join(''));
+  }
+
+  // ── Segmented OTP Input Box Handlers ──────────────────────────────────
+  function handleDigitChange(index, e) {
+    const rawVal = e.target.value;
+    const cleanDigits = rawVal.replace(/\D/g, '');
+
+    if (!cleanDigits) {
+      const next = [...otpDigits];
+      next[index] = '';
+      setOtpDigits(next);
+      return;
+    }
+
+    const char = cleanDigits.slice(-1);
+    const next = [...otpDigits];
+    next[index] = char;
+    setOtpDigits(next);
+
+    // Auto-advance focus to next tile
+    if (index < OTP_LENGTH - 1 && char) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 6 boxes are filled
+    const fullCode = next.join('');
+    if (fullCode.length === OTP_LENGTH && next.every((d) => d !== '')) {
+      handleVerifyCode(fullCode);
+    }
+  }
+
+  function handleDigitKeyDown(index, e) {
+    if (e.key === 'Backspace') {
+      if (!otpDigits[index] && index > 0) {
+        inputRefs.current[index - 1]?.focus();
+        const next = [...otpDigits];
+        next[index - 1] = '';
+        setOtpDigits(next);
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault();
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+      e.preventDefault();
+      inputRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleDigitPaste(e) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    if (!pasted) return;
+
+    const next = [...otpDigits];
+    for (let i = 0; i < OTP_LENGTH; i++) {
+      next[i] = pasted[i] || '';
+    }
+    setOtpDigits(next);
+
+    const targetIdx = Math.min(pasted.length, OTP_LENGTH - 1);
+    inputRefs.current[targetIdx]?.focus();
+
+    if (pasted.length === OTP_LENGTH) {
+      handleVerifyCode(pasted);
+    }
+  }
+
+  const currentOtpValue = otpDigits.join('');
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="login-page">
       <div className="login-card">
 
-        {/* Logo / brand */}
+        {/* Logo / Brand Header */}
         <div className="login-card__brand">
-          <span className="login-card__logo">⚖</span>
+          <span className="login-card__logo" role="img" aria-label="Scales of Justice">⚖</span>
           <h1 className="login-card__title">LEXIS</h1>
-          <p className="login-card__subtitle">Legal Aid, Autonomously</p>
+          <p className="login-card__subtitle">Autonomous Legal Aid System</p>
         </div>
 
-        {/* Step indicator */}
-        <div className="login-steps">
-          <span className={`login-step ${step === 'phone' ? 'login-step--active' : 'login-step--done'}`}>
-            1 · Phone
+        {/* Step Indicator */}
+        <div className="login-steps" aria-label="Sign-in progress">
+          <span className={`login-step ${step === 'email' ? 'login-step--active' : 'login-step--done'}`}>
+            {step === 'otp' ? '✓ Email' : '1 · Email'}
           </span>
           <span className="login-steps__connector" />
           <span className={`login-step ${step === 'otp' ? 'login-step--active' : ''}`}>
-            2 · Verify OTP
+            2 · Verification
           </span>
         </div>
 
-        {/* Error message */}
-        {error && (
-          <div className="login-error" role="alert">
-            {error}
+        {/* Info Feedback Banner */}
+        {info && (
+          <div className="login-info" role="status">
+            <span className="login-info__icon">ℹ️</span>
+            <span>{info}</span>
           </div>
         )}
 
-        {/* ── STEP 1: Phone entry ────────────────────────────────── */}
-        {step === 'phone' && (
+        {/* Error Feedback Banner */}
+        {error && (
+          <div className="login-error" role="alert">
+            <span className="login-error__icon">⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* ── STEP 1: Email Entry ──────────────────────────────────── */}
+        {step === 'email' && (
           <form onSubmit={handleSendOtp} className="login-form" noValidate>
-            <label htmlFor="phone" className="login-label">
-              Mobile number (with country code)
+            <label htmlFor="email" className="login-label">
+              Citizen Email Address
             </label>
-            <input
-              id="phone"
-              type="tel"
-              className="input-field"
-              placeholder="+91 9876543210"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoFocus
-              autoComplete="tel"
-              disabled={loading}
-            />
+            <div className="login-input-group">
+              <span className="login-input-icon" aria-hidden="true">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect width="20" height="16" x="2" y="4" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </span>
+              <input
+                id="email"
+                type="email"
+                className="input-field login-email-input"
+                placeholder="citizen@example.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError('');
+                }}
+                autoFocus
+                autoComplete="email"
+                disabled={loading}
+                required
+              />
+            </div>
+
             <p className="login-hint">
-              An OTP will be sent to this number. In development mode,
-              check the <strong>backend server terminal</strong> for the code.
+              🔒 <strong>Passwordless & Secure:</strong> We will email you a 6-digit one-time code to authenticate your session.
             </p>
+
             <button
               type="submit"
               className="btn btn-primary login-submit-btn"
-              disabled={loading}
+              disabled={loading || !email.trim()}
             >
-              {loading ? 'Sending…' : 'Send OTP →'}
+              {loading ? (
+                <span className="login-btn-content">
+                  <span className="login-spinner" /> Sending Code…
+                </span>
+              ) : (
+                'Send Verification Code →'
+              )}
             </button>
           </form>
         )}
 
-        {/* ── STEP 2: OTP entry ──────────────────────────────────── */}
+        {/* ── STEP 2: 6-Digit Segmented OTP Entry ──────────────────── */}
         {step === 'otp' && (
-          <form onSubmit={handleVerifyOtp} className="login-form" noValidate>
-            <p className="login-otp-sent">
-              OTP sent to <strong>{phone}</strong>.
-              Check the backend server terminal for the code.
-            </p>
-            <label htmlFor="otp" className="login-label">
-              Enter 6-digit OTP
+          <form onSubmit={handleFormSubmit} className="login-form" noValidate>
+            <div className="login-otp-sent-banner">
+              <div className="login-otp-sent-text">
+                Code sent to <span className="login-email-badge">{email}</span>
+              </div>
+              <button
+                type="button"
+                className="login-edit-email-btn"
+                onClick={() => {
+                  setStep('email');
+                  setOtpDigits(Array(OTP_LENGTH).fill(''));
+                  setError('');
+                  setInfo('');
+                }}
+                disabled={loading}
+                title="Change email address"
+              >
+                Change
+              </button>
+            </div>
+
+            <label className="login-label">
+              Enter 6-digit Verification Code
             </label>
-            <input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              className="input-field login-otp-input"
-              placeholder="123456"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} // digits only
-              autoFocus
-              autoComplete="one-time-code"
-              disabled={loading}
-            />
+
+            {/* 6-box Segmented PIN Input */}
+            <div
+              className={`login-otp-boxes ${error ? 'login-otp-boxes--error' : ''}`}
+              onPaste={handleDigitPaste}
+            >
+              {otpDigits.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={(el) => (inputRefs.current[idx] = el)}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={1}
+                  className={`login-otp-box ${digit ? 'login-otp-box--filled' : ''}`}
+                  value={digit}
+                  onChange={(e) => handleDigitChange(idx, e)}
+                  onKeyDown={(e) => handleDigitKeyDown(idx, e)}
+                  disabled={loading}
+                  aria-label={`Digit ${idx + 1} of ${OTP_LENGTH}`}
+                  autoComplete="one-time-code"
+                />
+              ))}
+            </div>
+
             <button
               type="submit"
               className="btn btn-primary login-submit-btn"
-              disabled={loading}
+              disabled={loading || currentOtpValue.length !== OTP_LENGTH}
             >
-              {loading ? 'Verifying…' : 'Verify & Sign in →'}
+              {loading ? (
+                <span className="login-btn-content">
+                  <span className="login-spinner" /> Verifying…
+                </span>
+              ) : (
+                'Verify & Sign in →'
+              )}
             </button>
-            {/* Allow going back to edit phone number */}
+
+            {/* Resend OTP Row with Cooldown */}
+            <div className="login-resend-row">
+              {resendCooldown > 0 ? (
+                <span className="login-cooldown-text">
+                  Resend code in <strong>{resendCooldown}s</strong>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-link login-resend-btn"
+                  onClick={handleResendOtp}
+                  disabled={loading}
+                >
+                  Didn’t receive the email? <strong>Resend Code</strong>
+                </button>
+              )}
+            </div>
+
+            {/* Micro-guide helper */}
+            <div className="login-troubleshoot-hints">
+              <p className="login-hint-item">
+                💡 <strong>Tip:</strong> If you don't see the email within 30 seconds, please check your <em>Spam</em> or <em>Promotions</em> folder.
+              </p>
+            </div>
+
+            {/* Back Button */}
             <button
               type="button"
               className="btn btn-ghost login-back-btn"
-              onClick={() => { setStep('phone'); setOtp(''); setError(''); }}
+              onClick={() => {
+                setStep('email');
+                setOtpDigits(Array(OTP_LENGTH).fill(''));
+                setError('');
+                setInfo('');
+              }}
               disabled={loading}
             >
-              ← Change number
+              ← Use a different email
             </button>
           </form>
         )}

@@ -69,7 +69,8 @@ class AnalyticsOverviewResponse(BaseModel):
 
 class UserAdminOut(BaseModel):
     id: str
-    phone: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
     role: str
     is_active: bool
     created_at: str
@@ -298,7 +299,8 @@ async def list_users(
         users_list.append(
             UserAdminOut(
                 id=str(u.get("_id")),
-                phone=u.get("phone", ""),
+                phone=u.get("phone"),
+                email=u.get("email"),
                 role=str(u.get("role", "user")),
                 is_active=bool(u.get("is_active", True)),
                 created_at=created_at_str,

@@ -75,8 +75,8 @@ const FEATURES = [
 function Home() {
   const { user } = useAuth();
 
-  // Friendly display name: phone number or fallback
-  const displayName = user?.phone || user?.id || 'Citizen';
+  // Friendly display name: email, phone number, or fallback
+  const displayName = user?.email || user?.phone || user?.id || 'Citizen';
 
   return (
     <div className="home-page">

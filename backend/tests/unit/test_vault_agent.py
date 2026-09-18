@@ -130,17 +130,17 @@ async def test_low_confidence_date_flagged():
          "raw_snippet": "01/01/2027", "needs_confirmation": false}
     ]"""
 
-    with patch("langchain_openai.ChatOpenAI") as mock_llm_class:
-        mock_instance = MagicMock()
-        mock_llm_class.return_value = mock_instance
+    with patch("google.genai.Client") as mock_genai_cls:
+        mock_client = MagicMock()
+        mock_genai_cls.return_value = mock_client
         mock_response = MagicMock()
-        mock_response.content = mock_llm_response
-        mock_instance.ainvoke = AsyncMock(return_value=mock_response)
+        mock_response.text = mock_llm_response
+        mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        # Patch settings to have a key
         with patch("core.config.get_settings") as mock_settings:
-            mock_settings.return_value.OPENAI_API_KEY = "sk-test-key"
-            mock_settings.return_value.OPENAI_MODEL_DEV = "gpt-4o-mini"
+            mock_settings.return_value.GEMINI_API_KEY = "test-key"
+            mock_settings.return_value.GEMINI_MODEL_DEV = "gemini-3.6-flash"
+            mock_settings.return_value.OPENAI_API_KEY = ""
 
             results = await agent.extract_dates_from_text(
                 "The lease expires on 31 March 2027. Payment 01/01/2027."
