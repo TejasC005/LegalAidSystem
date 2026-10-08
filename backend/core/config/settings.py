@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
     # ── LLM (Gemini) ──────────────────────────────────────────────────────
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL_DEV: str = "gemini-3.6-flash"
+    GEMINI_MODEL_DEV: str = "gemini-3.5-flash"
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL_DEV: str = "gpt-4o-mini"
     OPENAI_MODEL_DEMO: str = "gpt-4o"

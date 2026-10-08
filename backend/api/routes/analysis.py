@@ -31,7 +31,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse
 
 from api.dependencies.auth import get_current_user
@@ -49,7 +49,9 @@ router = APIRouter(prefix="/analysis", tags=["Document Analyzer"])
 
 @router.post("/upload", summary="Upload and analyze a legal document")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(..., description="PDF, JPEG, or PNG document to analyze"),
+    session_id: Optional[str] = Form(None, description="Optional Redis chat session ID for memory sync"),
     current_user: dict = Depends(get_current_user),
     db = Depends(get_database),
 ):
@@ -61,11 +63,13 @@ async def upload_document(
       1. Read the uploaded file bytes from the HTTP request.
       2. Validate size, MIME type, and magic bytes.
       3. Run OCR text extraction (sync function wrapped in asyncio.to_thread).
-      4. Split text into clauses and score each GREEN/YELLOW/RED.
-      5. Generate plain-language rewrites for YELLOW/RED clauses.
-      6. Store the file in per-user isolated storage.
-      7. Save the analysis record to MongoDB.
-      8. Return the full analysis as JSON.
+      4. Categorize document (Identity / Court / Rental / Contract).
+      5. Extract structured entities & sync verified identity to memory/profile.
+      6. Split text into clauses and score each GREEN/YELLOW/RED (for agreements).
+      7. Generate plain-language rewrites for YELLOW/RED clauses.
+      8. Store the file in per-user isolated storage.
+      9. Save the analysis record to MongoDB.
+      10. Return the full analysis as JSON.
 
     ACCESS CONTROL:
       Only the uploading user can retrieve their analysis records.
@@ -103,6 +107,7 @@ async def upload_document(
     # ── Run analysis pipeline ─────────────────────────────────────────────
     user_id = current_user["sub"]
     agent = get_analyzer_agent()
+    redis_client = getattr(request.app.state, "redis", None)
 
     analysis_result = await agent.analyze_document(
         file_bytes=file_bytes,
@@ -110,6 +115,8 @@ async def upload_document(
         original_name=file.filename or "uploaded_document",
         user_id=user_id,
         db=db,
+        session_id=session_id,
+        redis=redis_client,
         openai_api_key=settings.OPENAI_API_KEY,
         model=settings.OPENAI_MODEL_DEV,
     )
@@ -123,17 +130,29 @@ async def upload_document(
     # ── Persist analysis record to MongoDB ────────────────────────────────
     analysis_id = str(uuid.uuid4())
     record = {
-        "analysis_id":   analysis_id,
-        "user_id":       user_id,
-        "file_id":       analysis_result.file_id,
-        "original_name": analysis_result.original_name,
-        "status":        analysis_result.status,
-        "total_clauses": analysis_result.total_clauses,
-        "green_count":   analysis_result.green_count,
-        "yellow_count":  analysis_result.yellow_count,
-        "red_count":     analysis_result.red_count,
-        "created_at":    datetime.now(timezone.utc).isoformat(),
-        "clauses":       [
+        "analysis_id":                analysis_id,
+        "user_id":                    user_id,
+        "file_id":                    analysis_result.file_id,
+        "original_name":              analysis_result.original_name,
+        "status":                     analysis_result.status,
+        "document_category":          analysis_result.document_category,
+        "document_type":              analysis_result.document_type,
+        "document_title":             analysis_result.document_title,
+        "extracted_info":             analysis_result.extracted_info,
+        "plain_language_summary":     analysis_result.plain_language_summary,
+        "plain_language_summary_hi":  analysis_result.plain_language_summary_hi,
+        "key_actions":                 analysis_result.key_actions,
+        "memory_saved":               analysis_result.memory_saved,
+        "prior_info_found":           analysis_result.prior_info_found,
+        "memory_action":              analysis_result.memory_action,
+        "changed_fields":             analysis_result.changed_fields,
+        "conflicts":                  analysis_result.conflicts,
+        "total_clauses":              analysis_result.total_clauses,
+        "green_count":                analysis_result.green_count,
+        "yellow_count":               analysis_result.yellow_count,
+        "red_count":                  analysis_result.red_count,
+        "created_at":                 datetime.now(timezone.utc).isoformat(),
+        "clauses": [
             {
                 "text":        c.text,
                 "risk_level":  c.risk_level.value,
@@ -152,16 +171,17 @@ async def upload_document(
     logger.info(
         "Analysis saved",
         extra={
-            "analysis_id":   analysis_id,
-            "user_id":       user_id,
-            "total_clauses": analysis_result.total_clauses,
-            "red":           analysis_result.red_count,
-            "yellow":        analysis_result.yellow_count,
+            "analysis_id":        analysis_id,
+            "user_id":            user_id,
+            "document_category":  analysis_result.document_category,
+            "total_clauses":      analysis_result.total_clauses,
+            "red":                analysis_result.red_count,
+            "yellow":             analysis_result.yellow_count,
         },
     )
 
     return {
-        "analysis_id":   analysis_id,
+        "analysis_id": analysis_id,
         **analysis_result.to_dict(),
     }
 

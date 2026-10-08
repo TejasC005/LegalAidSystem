@@ -60,6 +60,15 @@ api.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // When uploading FormData (files), remove default 'Content-Type: application/json'
+    // so the browser automatically sets 'multipart/form-data; boundary=...'
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      }
+    }
+
     return config;  // Always return the config — this tells Axios to proceed
   },
   (error) => {
@@ -217,16 +226,14 @@ export function downloadDraftFile(draftId, format) {
  * @param {File} file  The File object from the file input element
  * @returns {Promise}  Resolves with AnalysisResponse (clauses array + summary stats)
  */
-export function uploadDocumentForAnalysis(file) {
+export function uploadDocumentForAnalysis(file, sessionId = null) {
   const formData = new FormData();
   formData.append('file', file);
+  if (sessionId && sessionId !== 'undefined' && sessionId !== 'null') {
+    formData.append('session_id', sessionId);
+  }
 
   return api.post('/api/v1/analysis/upload', formData, {
-    headers: {
-      // Let Axios set Content-Type automatically — do NOT set it manually
-      // Setting it manually breaks multipart boundary and causes 422 errors
-      'Content-Type': undefined,
-    },
     timeout: 60000,  // 60s — OCR on large documents can take time
   });
 }
@@ -412,9 +419,7 @@ export function updateUserProfile(data) {
 export function uploadProfilePicture(file) {
   const formData = new FormData();
   formData.append('file', file);
-  return api.post('/api/v1/users/me/profile/picture', formData, {
-    headers: { 'Content-Type': undefined },
-  });
+  return api.post('/api/v1/users/me/profile/picture', formData);
 }
 
 export function deleteAccount() {
