@@ -258,6 +258,18 @@ async def rights_agent_node(state: OrchestratorState) -> Dict:
     agent = get_rights_agent()
     response_text, citations, status = await agent.explain_rights(query)
 
+    retrieved = agent.retrieve_relevant_chunks(query, top_k=3)
+
+    verification_status = "unverified"
+
+    for payload, score in retrieved:
+        if score >= CONFIDENCE_SCORE_THRESHOLD:
+            verification_status = payload.get(
+                "verification_status",
+                "unverified"
+            )
+            break
+
     from core.config import get_settings
     llm_calls = 1 if (get_settings().OPENAI_API_KEY and status == "ok") else 0
 
@@ -270,6 +282,7 @@ async def rights_agent_node(state: OrchestratorState) -> Dict:
         "metadata": {
             "latency_ms": elapsed_ms,
             "citations": citations,
+            "verification_status": verification_status,
             "agent": "RightsExplainerAgent",
             "model": "gpt-4o-mini / BGE-M3",
         },
