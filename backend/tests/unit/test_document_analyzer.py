@@ -370,3 +370,446 @@ async def test_user_cannot_access_other_users_analysis():
     mock_db["document_analyses"].find_one.assert_called_once_with(
         {"analysis_id": "analysis_abc123", "user_id": "user_B_id"}
     )
+
+
+# =============================================================================
+# Test 9: Aadhaar Card extraction, number masking, and ISO DOB normalization
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_aadhaar_card_extraction_and_iso_dob():
+    """
+    Verifies that Aadhaar card OCR text is correctly classified and extracted:
+    - doc_type is identified as 'identity_document'
+    - id_type is 'Aadhaar Card'
+    - id_number is masked (e.g. XXXX XXXX 5678)
+    - Indian format DOB (DD/MM/YYYY) is normalized to ISO YYYY-MM-DD
+    """
+    from services.analysis.doc_intelligence import classify_document_type, extract_identity_info, normalize_to_iso_date
+
+    sample_aadhaar_text = (
+        "GOVERNMENT OF INDIA\n"
+        "Unique Identification Authority of India\n"
+        "Name: Rajesh Kumar\n"
+        "DOB: 14/08/1990\n"
+        "Gender: Male\n"
+        "Aadhaar No: 5489 1234 5678\n"
+        "Address: 42 MG Road, Indiranagar, Bangalore 560038\n"
+    )
+
+    category, doc_type, _ = await classify_document_type(sample_aadhaar_text)
+    assert category == "identity_document"
+    assert doc_type == "aadhaar_card"
+
+    info = await extract_identity_info(sample_aadhaar_text, doc_type="aadhaar_card")
+    assert info["id_type"] == "Aadhaar Card"
+    assert info["name"] == "Rajesh Kumar"
+    assert "XXXX" in info["id_number"]
+    assert info["id_number"].endswith("5678")
+    assert info["dob"] == "14/08/1990"
+    assert info["dob_iso"] == "1990-08-14"
+    assert normalize_to_iso_date("14/08/1990") == "1990-08-14"
+    assert info["city"] == "Bangalore"
+
+
+# =============================================================================
+# Test 10: PAN Card extraction with regex and masking
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_pan_card_extraction():
+    """
+    Verifies that PAN card text is identified with standard 10-char alphanumeric format:
+    - id_type is 'PAN Card'
+    - id_number matches PAN format
+    - DOB is converted to ISO YYYY-MM-DD
+    """
+    from services.analysis.doc_intelligence import classify_document_type, extract_identity_info
+
+    sample_pan_text = (
+        "INCOME TAX DEPARTMENT\n"
+        "GOVT. OF INDIA\n"
+        "Permanent Account Number Card\n"
+        "ABCDE1234F\n"
+        "Name: Priya Sharma\n"
+        "Father's Name: Ramesh Sharma\n"
+        "Date of Birth: 22/11/1995\n"
+    )
+
+    category, doc_type, _ = await classify_document_type(sample_pan_text)
+    assert category == "identity_document"
+    assert doc_type == "pan_card"
+
+    info = await extract_identity_info(sample_pan_text, doc_type="pan_card")
+    assert info["id_type"] == "PAN Card"
+    assert info["name"] == "Priya Sharma"
+    assert info["id_number"] == "ABCDE1234F"
+    assert info["dob_iso"] == "1995-11-22"
+
+
+# =============================================================================
+# Test 11: Prior Information Detection and Non-Destructive Memory Merge
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_prior_info_detection_and_non_destructive_merge():
+    """
+    Verifies that when a PAN card (lacking address) is uploaded by a user who
+    already has an Aadhaar address in their profile:
+    - inspect_and_sync_identity detects the prior profile
+    - Prior address and city are preserved non-destructively in the merged record
+    - MongoDB users collection update preserves existing address
+    """
+    from bson import ObjectId
+    from agents.document_analyzer.agent import inspect_and_sync_identity
+
+    user_id = str(ObjectId())
+    existing_profile = {
+        "full_name": "Priya Sharma",
+        "address": "Flat 302, Palm Heights, Indiranagar",
+        "city": "Bengaluru",
+        "date_of_birth": "1995-11-22",
+        "id_type": "Aadhaar Card",
+        "id_number_masked": "XXXX-XXXX-9876",
+        "id_verified": True,
+    }
+
+    mock_db = MagicMock()
+    mock_db["users"].find_one = AsyncMock(return_value={"_id": ObjectId(user_id), "profile": existing_profile})
+    mock_db["users"].update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+
+    new_extracted = {
+        "name": "Priya Sharma",
+        "id_type": "PAN Card",
+        "id_number": "ABCDE1234F",
+        "dob": "22/11/1995",
+        "dob_iso": "1995-11-22",
+        "address": None,
+        "city": None,
+    }
+
+    result = await inspect_and_sync_identity(
+        user_id=user_id,
+        session_id=None,
+        extracted=new_extracted,
+        db=mock_db,
+    )
+
+    assert result["prior_info_found"] is True
+    assert result["memory_action"] in ("merged", "updated")
+    assert len(result["conflicts"]) == 0
+
+    # Critical non-destructive check: address and city must be preserved!
+    merged = result["merged_record"]
+    assert merged["address"] == "Flat 302, Palm Heights, Indiranagar"
+    assert merged["city"] == "Bengaluru"
+    assert merged["id_type"] == "PAN Card"
+    assert merged["id_number"] == "ABCDE1234F"
+
+    # Verify MongoDB was updated with non-destructive merged fields
+    mock_db["users"].update_one.assert_called_once()
+    call_args = mock_db["users"].update_one.call_args[0]
+    assert call_args[0] == {"_id": ObjectId(user_id)}
+    set_fields = call_args[1]["$set"]
+    assert set_fields["profile.address"] == "Flat 302, Palm Heights, Indiranagar"
+    assert set_fields["profile.city"] == "Bengaluru"
+
+
+# =============================================================================
+# Test 12: Prior Information Conflict Detection
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_prior_info_conflict_detection():
+    """
+    Verifies that when a document with mismatched Name or DOB is uploaded:
+    - inspect_and_sync_identity detects the discrepancies
+    - Flags memory_action as 'conflict_detected'
+    - Conflict details are logged in memory_trace['conflicts']
+    """
+    from bson import ObjectId
+    from agents.document_analyzer.agent import inspect_and_sync_identity
+
+    user_id = str(ObjectId())
+    existing_profile = {
+        "full_name": "Vikram Malhotra",
+        "address": "12 Park Street, Kolkata",
+        "city": "Kolkata",
+        "date_of_birth": "1988-05-12",
+        "id_type": "Aadhaar Card",
+        "id_number_masked": "XXXX-XXXX-1111",
+    }
+
+    mock_db = MagicMock()
+    mock_db["users"].find_one = AsyncMock(return_value={"_id": ObjectId(user_id), "profile": existing_profile})
+    mock_db["users"].update_one = AsyncMock()
+
+    mismatched_extracted = {
+        "name": "Vikramaditya Malhotra",  # Different name
+        "id_type": "PAN Card",
+        "id_number": "XXXXX9999K",
+        "dob": "01/01/1992",              # Different DOB
+        "dob_iso": "1992-01-01",
+        "address": None,
+        "city": None,
+    }
+
+    result = await inspect_and_sync_identity(
+        user_id=user_id,
+        session_id=None,
+        extracted=mismatched_extracted,
+        db=mock_db,
+    )
+
+    assert result["prior_info_found"] is True
+    assert result["memory_action"] == "conflict_detected"
+    assert len(result["conflicts"]) >= 2
+    conflict_fields = [c["field"] for c in result["conflicts"]]
+    assert "name" in conflict_fields
+    assert "date_of_birth" in conflict_fields
+
+
+# =============================================================================
+# Test 13: Court Order & Judgment Extraction
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_court_order_extraction():
+    """
+    Verifies that Court Judgment / Order text is correctly classified and parsed:
+    - doc_type is 'court_judgment' under 'court_document'
+    - verdict is parsed
+    - plain language summary is generated
+    """
+    from services.analysis.doc_intelligence import classify_document_type, extract_court_order_info
+
+    court_text = (
+        "IN THE HIGH COURT OF JUDICATURE AT BOMBAY\n"
+        "ORDINARY ORIGINAL CIVIL JURISDICTION\n"
+        "COMMERCIAL SUIT NO. 450 OF 2023\n"
+        "ABC Technologies Private Limited ... Plaintiff\n"
+        "v/s\n"
+        "XYZ Infotech Solutions LLP ... Defendant\n\n"
+        "ORDER:\n"
+        "Having heard learned counsel for both sides, the interim injunction is hereby GRANTED.\n"
+        "The defendant is restrained from infringing the plaintiff's registered trademark.\n"
+        "The suit stands disposed of accordingly."
+    )
+
+    category, doc_type, _ = await classify_document_type(court_text)
+    assert category == "court_document"
+    assert doc_type == "court_judgment"
+
+    parsed = await extract_court_order_info(court_text)
+    assert parsed["court_name"] == "High Court of Judicature at Bombay"
+    assert "INJUNCTION" in parsed["verdict"] or "RELIEF" in parsed["verdict"]
+    assert parsed["plain_language_summary"] != ""
+
+
+# =============================================================================
+# Test 14: Rental Agreement Extraction
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_rental_agreement_extraction():
+    """
+    Verifies that Rental Agreement text is classified and key terms extracted:
+    - doc_type is 'rental_agreement'
+    - key terms include monthly rent, security deposit, duration
+    - plain language summary is present
+    """
+    from services.analysis.doc_intelligence import classify_document_type, extract_rental_agreement_info
+
+    rental_text = (
+        "RENTAL AGREEMENT\n"
+        "This Agreement of Tenancy is made on 1st April 2024 between:\n"
+        "Landlord: Smt. Sunita Rao, residing at No. 5, Jayanagar, Bangalore.\n"
+        "Tenant: Mr. Amit Verma, residing at No. 12, Indiranagar, Bangalore.\n"
+        "The Monthly Rent of Rs 25,000 shall be payable by 5th of each month.\n"
+        "The Tenant has paid a Security Deposit of Rs 100000.\n"
+        "The tenancy shall be for a duration of 11 months."
+    )
+
+    category, doc_type, _ = await classify_document_type(rental_text)
+    assert category == "agreement_contract"
+    assert doc_type == "rental_agreement"
+
+    parsed = await extract_rental_agreement_info(rental_text)
+    assert "25,000" in (parsed.get("monthly_rent") or "")
+    assert "1,00,000" in (parsed.get("security_deposit") or "") or "100000" in (parsed.get("security_deposit") or "")
+    assert "11" in str(parsed.get("lease_duration")).lower()
+    assert parsed["plain_language_summary"] != ""
+
+
+# =============================================================================
+# Test 15: Drafter Session Auto-prefills from User Profile
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_document_drafter_auto_prefills_identity():
+    """
+    Verifies that starting a draft session (POST /session) auto-prefills identity
+    fields from the authenticated user's MongoDB profile:
+    - Checks that prefilled fields (e.g. sender_name, sender_address, city) are added
+    - Verifies current_question advances to the first UNANSWERED question
+    """
+    from bson import ObjectId
+    from api.routes.drafts import start_draft_session, StartSessionRequest
+
+    user_id = str(ObjectId())
+    user_profile = {
+        "full_name": "Rohan Gupta",
+        "address": "Flat 5B, Skyline Towers, Sector 62",
+        "city": "Noida",
+    }
+
+    mock_db = MagicMock()
+    mock_users = MagicMock()
+    mock_users.find_one = AsyncMock(return_value={"_id": ObjectId(user_id), "profile": user_profile})
+    mock_db.users = mock_users
+    mock_db.__getitem__.side_effect = lambda k: mock_users if k == "users" else MagicMock()
+    mock_db.draft_sessions.insert_one = AsyncMock()
+
+    body = StartSessionRequest(doc_type="legal_notice")
+    current_user = {"sub": user_id, "email": "rohan@example.com"}
+
+    mock_agent = MagicMock()
+    mock_agent.process_turn = AsyncMock(return_value=("What is the recipient's name?", {}, "in_progress"))
+
+    with patch("api.routes.drafts.get_drafter_agent", return_value=mock_agent):
+        response = await start_draft_session(body=body, current_user=current_user, db=mock_db)
+
+    assert response.doc_type == "legal_notice"
+    assert response.status == "in_progress"
+    assert "sender_name" in response.prefilled_fields
+    assert "sender_address" in response.prefilled_fields
+    assert response.questions_answered >= 2
+    assert response.current_question is not None
+    assert "sender" not in response.current_question.lower()
+
+    # Also verify RTI application pre-fills name, address, and city
+    body_rti = StartSessionRequest(doc_type="rti_application")
+    with patch("api.routes.drafts.get_drafter_agent", return_value=mock_agent):
+        response_rti = await start_draft_session(body=body_rti, current_user=current_user, db=mock_db)
+    assert response_rti.doc_type == "rti_application"
+    assert "applicant_name" in response_rti.prefilled_fields
+    assert "applicant_address" in response_rti.prefilled_fields
+    assert "city" in response_rti.prefilled_fields
+    assert response_rti.questions_answered >= 3
+
+
+# =============================================================================
+# Test 16: Vision Model Cascade on Quota Exhaustion (429)
+# =============================================================================
+
+def test_gemini_vision_cascade_on_model_exhaustion():
+    """
+    Verifies that when the primary model in the vision cascade throws a 429
+    ResourceExhausted / ClientError, _run_gemini_vision automatically tries
+    the next model in the cascade and returns the transcribed text.
+    """
+    from services.ocr.extractor import _run_gemini_vision
+
+    call_count = 0
+
+    def mock_generate_content(model, contents):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            # First model hits 429 Quota Exhaustion
+            raise Exception("429 RESOURCE_EXHAUSTED: Quota exceeded for model")
+        # Second model in cascade succeeds
+        mock_resp = MagicMock()
+        mock_resp.text = "GOVERNMENT OF INDIA\nTejas Vikas Chaudhari\nDOB: 01/04/2005\n7986 4400 6099"
+        return mock_resp
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = mock_generate_content
+
+    with patch("google.genai.Client", return_value=mock_client):
+        with patch("core.config.get_settings") as mock_settings:
+            s = MagicMock()
+            s.GEMINI_API_KEY = "test-valid-key"
+            s.GEMINI_MODEL_DEV = "gemini-model-exhausted"
+            s.OPENAI_API_KEY = ""
+            mock_settings.return_value = s
+
+            result = _run_gemini_vision(b"fake_image_bytes", mime_type="image/jpeg")
+
+    assert "Tejas Vikas Chaudhari" in result
+    assert "7986 4400 6099" in result
+    assert call_count >= 2, f"Expected cascade to attempt at least 2 models, got {call_count}"
+
+
+def test_gemini_vision_full_cascade_switching_on_consecutive_errors():
+    """
+    Verifies that when model 1 fails all retry attempts (e.g. repeated 429),
+    _run_gemini_vision moves to model 2 in candidate_models and extracts text.
+    """
+    from services.ocr.extractor import _run_gemini_vision
+
+    attempted_models = []
+
+    def mock_generate_content(model, contents):
+        attempted_models.append(model)
+        if model == "model-a":
+            raise Exception("429 RESOURCE_EXHAUSTED: rate limited")
+        mock_resp = MagicMock()
+        mock_resp.text = "SUCCESSFUL TRANSCRIPTION FROM FALLBACK MODEL"
+        return mock_resp
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = mock_generate_content
+
+    with patch("google.genai.Client", return_value=mock_client):
+        with patch("core.config.get_settings") as mock_settings:
+            with patch("time.sleep", return_value=None):  # Fast execution in tests
+                s = MagicMock()
+                s.GEMINI_API_KEY = "test-valid-key"
+                s.GEMINI_MODEL_DEV = "model-a"
+                s.OPENAI_API_KEY = ""
+                mock_settings.return_value = s
+
+                result = _run_gemini_vision(b"fake_image_bytes", mime_type="image/jpeg")
+
+    assert "SUCCESSFUL TRANSCRIPTION" in result
+    assert "model-a" in attempted_models
+    assert len(attempted_models) >= 3  # model-a attempt 1, model-a attempt 2, next model
+
+
+# =============================================================================
+# Test 17: Front-Side Aadhaar Extraction Fidelity
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_tejas_aadhaar_card_format_extraction():
+    """
+    Verifies that real-world bilingual (Devanagari + English) Aadhaar front card
+    text is properly classified, extracted, masked, and tagged with card_side='front'.
+    """
+    from services.analysis.doc_intelligence import classify_document_type, extract_identity_info
+
+    tejas_aadhaar_text = (
+        "भारत सरकार\n"
+        "GOVERNMENT OF INDIA\n\n"
+        "तेजस विकास चौधरी\n"
+        "Tejas Vikas Chaudhari\n"
+        "जन्म तारीख/DOB: 01/04/2005\n"
+        "पुरुष/ MALE\n\n"
+        "7986 4400 6099\n"
+        "VID : 9146 1458 6503 3191\n\n"
+        "माझे आधार, माझी ओळख"
+    )
+
+    category, doc_type, _ = await classify_document_type(tejas_aadhaar_text)
+    assert category == "identity_document"
+    assert doc_type == "aadhaar_card"
+
+    extracted = await extract_identity_info(tejas_aadhaar_text, doc_type="aadhaar_card")
+    assert extracted["name"] == "Tejas Vikas Chaudhari"
+    assert extracted["id_type"] == "Aadhaar Card"
+    assert extracted["id_number"] == "XXXX XXXX 6099"
+    assert extracted["dob"] == "01/04/2005"
+    assert extracted["dob_iso"] == "2005-04-01"
+    assert extracted["gender"] == "Male"
+    assert extracted["card_side"] == "front"

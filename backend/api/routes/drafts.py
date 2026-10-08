@@ -50,6 +50,7 @@ class DraftSessionResponse(BaseModel):
     total_questions: int
     assembled_document: Optional[str] = None
     draft_id: Optional[str] = None
+    prefilled_fields: List[str] = Field(default_factory=list)
 
 class DraftDocumentSummary(BaseModel):
     draft_id: str
@@ -81,18 +82,59 @@ async def start_draft_session(
     current_user: dict = Depends(get_current_user),
     db = Depends(get_database)
 ):
+    from bson import ObjectId
+
     user_id = current_user.get("sub", "anonymous")
     if body.doc_type not in TEMPLATES:
         raise HTTPException(status_code=400, detail=f"Invalid doc_type. Choose from: {list(TEMPLATES.keys())}")
 
     session_id = str(uuid.uuid4())
     template_info = TEMPLATES[body.doc_type]
+    collected_answers: Dict[str, Any] = {}
+
+    # Check if user has saved identity details in their profile to auto pre-fill
+    if db is not None and user_id and not str(user_id).startswith("anon:"):
+        try:
+            if ObjectId.is_valid(user_id):
+                users_col = getattr(db, "users", None)
+                if users_col is None:
+                    users_col = db["users"]
+                user_doc = await users_col.find_one({"_id": ObjectId(user_id)})
+                if user_doc and user_doc.get("profile"):
+                    prof = user_doc["profile"]
+                    full_name = prof.get("full_name")
+                    address = prof.get("address")
+                    city = prof.get("city")
+
+                    if body.doc_type == "rti_application":
+                        if full_name:
+                            collected_answers["applicant_name"] = full_name
+                        if address:
+                            collected_answers["applicant_address"] = address
+                        if city:
+                            collected_answers["city"] = city
+                    elif body.doc_type == "legal_notice":
+                        if full_name:
+                            collected_answers["sender_name"] = full_name
+                        if address:
+                            collected_answers["sender_address"] = address
+                        if city:
+                            collected_answers["city"] = city
+                    elif body.doc_type == "consumer_complaint":
+                        if full_name:
+                            collected_answers["complainant_name"] = full_name
+                        if address:
+                            collected_answers["complainant_address"] = address
+                        if city:
+                            collected_answers["forum_city"] = city
+        except Exception as exc:
+            logger.warning("Could not auto-prefill identity from user profile: %s", exc)
 
     session_doc = {
         "session_id": session_id,
         "user_id": user_id,
         "doc_type": body.doc_type,
-        "collected_answers": {},
+        "collected_answers": collected_answers,
         "status": "in_progress",
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat()
@@ -101,21 +143,31 @@ async def start_draft_session(
     await db.draft_sessions.insert_one(session_doc)
 
     agent = get_drafter_agent()
-    response_text, _, status_str = await agent.process_turn(body.doc_type, {})
+    response_text, _, status_str = await agent.process_turn(body.doc_type, collected_answers)
 
-    first_question = template_info["questions"][0]["question"] if template_info["questions"] else None
+    # Determine first unanswered question dynamically
+    unanswered_q = None
+    for q in template_info["questions"]:
+        if q["key"] not in collected_answers or not str(collected_answers[q["key"]]).strip():
+            unanswered_q = q["question"]
+            break
+
+    prefilled_keys = [k for k in template_info["questions"] if k["key"] in collected_answers and str(collected_answers[k["key"]]).strip()]
+    num_answered = len(prefilled_keys)
 
     return DraftSessionResponse(
         session_id=session_id,
         doc_type=body.doc_type,
         doc_type_name=template_info["name"],
         status="in_progress",
-        current_question=first_question,
-        questions_answered=0,
+        current_question=unanswered_q,
+        questions_answered=num_answered,
         total_questions=len(template_info["questions"]),
         assembled_document=None,
-        draft_id=None
+        draft_id=None,
+        prefilled_fields=[q["key"] for q in prefilled_keys],
     )
+
 
 
 @router.post("/session/{session_id}/answer", response_model=DraftSessionResponse, summary="Submit answer for multi-turn draft session")

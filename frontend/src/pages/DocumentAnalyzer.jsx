@@ -1,20 +1,21 @@
 /*
  * frontend/src/pages/DocumentAnalyzer.jsx
  * ──────────────────────────────────────────────────────────────────────────
- * LEXIS — Document Analyzer Feature Page (Module 7)
+ * LEXIS — Intelligent Multi-Document Analyzer (Module 7)
  *
- * Replaces the Module 3 placeholder with a full document analysis UI:
- *   1. Drag-and-drop file upload zone (PDF, JPEG, PNG accepted).
- *   2. File validation feedback before sending.
- *   3. Animated loading state during analysis.
- *   4. Side-by-side view: original clause text ↔ risk badge + plain explanation.
- *   5. Color-coded by risk: 🟢 Green (safe) / 🟡 Yellow (caution) / 🔴 Red (high risk).
- *   6. Summary statistics bar: total clauses, risk breakdown counts.
- *   7. Filter pills to show only specific risk levels.
+ * Supports auto-detection and adaptive views for:
+ *   1. Identity Documents (Aadhaar & PAN Cards) with verified profile card,
+ *      copyable masked ID, prior memory sync status, and 1-click draft pre-fill.
+ *   2. Court Judgments & Orders with verdict banners, plain-language translations
+ *      in English and Hindi, and operative directions checklists.
+ *   3. Rental Agreements with key terms grids (Rent, Deposit, Tenure) and
+ *      tab-switched clause risk reviews.
+ *   4. Legal Contracts with color-coded clause-by-clause risk scoring (🟢🟡🔴).
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 import React, { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { uploadDocumentForAnalysis } from '../services/api';
 import './DocumentAnalyzer.css';
 
@@ -35,25 +36,27 @@ const FILE_ICONS = {
   'image/png':       '🖼️',
 };
 
-// ── Helper: format bytes ──────────────────────────────────────────────────────
+const CATEGORY_BADGES = {
+  identity_document:  { icon: '🪪', label: 'Identity Document', className: 'cat-identity' },
+  court_document:     { icon: '⚖️', label: 'Court Order / Judgment', className: 'cat-court' },
+  agreement_contract: { icon: '🏠', label: 'Agreement / Lease', className: 'cat-contract' },
+  general_legal:      { icon: '📄', label: 'Legal Document', className: 'cat-general' },
+};
+
 function formatBytes(bytes) {
-  if (bytes < 1024)       return `${bytes} B`;
-  if (bytes < 1048576)    return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024)    return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-// ── Helper: truncate long clause text for display ─────────────────────────────
 function truncateClause(text, maxChars = 300) {
   if (!text || text.length <= maxChars) return text;
   return text.slice(0, maxChars) + '…';
 }
 
-
-// =============================================================================
-// MAIN COMPONENT
-// =============================================================================
-
 function DocumentAnalyzer() {
+  const navigate = useNavigate();
+
   // File selection state
   const [selectedFile, setSelectedFile] = useState(null);
   const [dragActive, setDragActive]     = useState(false);
@@ -65,9 +68,11 @@ function DocumentAnalyzer() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [serverError, setServerError]       = useState('');
 
-  // Filter state
+  // UI view tabs
   const [activeFilter, setActiveFilter] = useState('all');
-
+  const [rentalTab, setRentalTab]       = useState('terms'); // 'terms' | 'clauses'
+  const [copiedId, setCopiedId]         = useState(false);
+  const [showConflicts, setShowConflicts] = useState(false);
 
   // ── File validation (client-side pre-check) ─────────────────────────────
   const validateFile = useCallback((file) => {
@@ -78,10 +83,10 @@ function DocumentAnalyzer() {
     if (file.size > MAX_SIZE_BYTES) {
       return `File is too large (${formatBytes(file.size)}). Maximum allowed size is ${MAX_SIZE_MB} MB.`;
     }
-    return null; // null = no error
+    return null;
   }, []);
 
-  // ── Handle file selection (from input click or drop) ──────────────────
+  // ── Handle file selection ──────────────────────────────────────────────
   const handleFileSelect = useCallback((file) => {
     setClientError('');
     setServerError('');
@@ -95,15 +100,12 @@ function DocumentAnalyzer() {
     setSelectedFile(file);
   }, [validateFile]);
 
-  // ── Input change handler ───────────────────────────────────────────────
   const onInputChange = (e) => {
     const file = e.target.files?.[0];
     if (file) handleFileSelect(file);
-    // Reset input value so the same file can be re-selected after removal
     e.target.value = '';
   };
 
-  // ── Drag-and-drop handlers ─────────────────────────────────────────────
   const onDragOver  = (e) => { e.preventDefault(); setDragActive(true); };
   const onDragLeave = (e) => { e.preventDefault(); setDragActive(false); };
   const onDrop      = (e) => {
@@ -113,7 +115,6 @@ function DocumentAnalyzer() {
     if (file) handleFileSelect(file);
   };
 
-  // ── Remove selected file ──────────────────────────────────────────────
   const removeFile = () => {
     setSelectedFile(null);
     setClientError('');
@@ -129,39 +130,51 @@ function DocumentAnalyzer() {
     setAnalysisResult(null);
 
     try {
-      const response = await uploadDocumentForAnalysis(selectedFile);
+      // Optional: pass session ID if stored in localStorage
+      const storedSession = localStorage.getItem('lexis_active_session_id');
+      const sessionId = (storedSession && storedSession !== 'undefined' && storedSession !== 'null') ? storedSession : null;
+      const response = await uploadDocumentForAnalysis(selectedFile, sessionId);
       setAnalysisResult(response.data);
-      setActiveFilter('all'); // Reset filter on new result
+      setActiveFilter('all');
+      setRentalTab('terms');
     } catch (err) {
       const detail = err.response?.data?.detail;
-      setServerError(
-        detail ||
-        'Analysis failed. Please check your file and try again.'
-      );
+      const errMsg = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d) => d.msg || JSON.stringify(d)).join(', ')
+          : (err.message || 'Analysis failed. Please check your file and try again.');
+      setServerError(errMsg);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // ── Filter clauses ────────────────────────────────────────────────────
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  // Filter clauses
   const filteredClauses = analysisResult?.clauses?.filter((c) => {
     if (activeFilter === 'all') return true;
     return c.risk_level === activeFilter;
   }) ?? [];
 
-
-  // ==========================================================================
-  // RENDER
-  // ==========================================================================
+  const category = analysisResult?.document_category || 'agreement_contract';
+  const categoryBadge = CATEGORY_BADGES[category] || CATEGORY_BADGES.agreement_contract;
+  const extracted = analysisResult?.extracted_info || {};
 
   return (
     <div className="analyzer-page">
       {/* ── Page Header ──────────────────────────────────────────────── */}
       <div className="analyzer-header">
-        <h1>📄 Document Analyzer</h1>
+        <h1>📄 Intelligent Document Analyzer</h1>
         <p>
-          Upload a contract, rent agreement, or legal notice to receive a clause-by-clause
-          risk analysis with plain-language explanations.
+          Upload any legal document, Indian identity card (Aadhaar / PAN), rental agreement,
+          or court order for instant intelligence extraction, memory pre-filling, and risk scoring.
         </p>
       </div>
 
@@ -194,7 +207,7 @@ function DocumentAnalyzer() {
             ? 'Drop your document here'
             : 'Drag & drop your document here'}
         </h3>
-        <p>or click to browse</p>
+        <p>Aadhaar, PAN Card, Rental Agreement, Court Judgment, or Contract</p>
 
         <div className="file-types">
           <span className="file-type-badge">PDF</span>
@@ -244,7 +257,7 @@ function DocumentAnalyzer() {
           onClick={handleAnalyze}
           disabled={isAnalyzing || !selectedFile}
         >
-          🔍 Analyze Document
+          🔍 Analyze & Extract Document
         </button>
       )}
 
@@ -253,7 +266,7 @@ function DocumentAnalyzer() {
         <div className="progress-bar-wrapper" role="status" aria-live="polite">
           <div className="progress-label">
             <span className="spinner" aria-hidden="true" />
-            Extracting text and analyzing clauses…
+            Reading document, classifying structure, and extracting intelligence…
           </div>
           <div className="progress-track">
             <div className="progress-fill" />
@@ -269,110 +282,412 @@ function DocumentAnalyzer() {
         </div>
       )}
 
-      {/* ── Results ──────────────────────────────────────────────────── */}
+      {/* ── Results Container ────────────────────────────────────────── */}
       {analysisResult && (
         <section className="results-section" aria-label="Analysis results">
 
-          {/* Summary stat cards */}
-          <div className="results-summary-bar">
-            <div className="summary-stat-card total">
-              <div className="stat-number">{analysisResult.total_clauses}</div>
-              <div className="stat-label">Total Clauses</div>
-            </div>
-            <div className="summary-stat-card green">
-              <div className="stat-number">{analysisResult.green_count}</div>
-              <div className="stat-label">🟢 Safe</div>
-            </div>
-            <div className="summary-stat-card yellow">
-              <div className="stat-number">{analysisResult.yellow_count}</div>
-              <div className="stat-label">🟡 Caution</div>
-            </div>
-            <div className="summary-stat-card red">
-              <div className="stat-number">{analysisResult.red_count}</div>
-              <div className="stat-label">🔴 High Risk</div>
-            </div>
-          </div>
-
-          {/* Filter + header */}
-          <div className="results-header">
-            <h2>Clause-by-Clause Analysis</h2>
-            <div className="filter-pills" role="group" aria-label="Filter clauses by risk level">
-              {['all', 'green', 'yellow', 'red'].map((f) => (
-                <button
-                  key={f}
-                  id={`filter-${f}`}
-                  className={`filter-pill ${activeFilter === f ? `active-${f}` : ''}`}
-                  onClick={() => setActiveFilter(f)}
-                  aria-pressed={activeFilter === f}
-                >
-                  {f === 'all' ? 'All' : RISK_CONFIG[f].emoji + ' ' + RISK_CONFIG[f].label}
-                  {f !== 'all' && ` (${analysisResult[`${f}_count`]})`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Clause cards */}
-          <div className="clauses-list">
-            {filteredClauses.length === 0 ? (
-              <p className="empty-filter-msg">
-                No {activeFilter} clauses found in this document.
-              </p>
-            ) : (
-              filteredClauses.map((clause, idx) => {
-                const risk = RISK_CONFIG[clause.risk_level] ?? RISK_CONFIG.green;
-                return (
-                  <article
-                    key={idx}
-                    className={`clause-card risk-${risk.className}`}
-                    aria-label={`Clause ${idx + 1}: ${risk.label} risk`}
-                  >
-                    {/* Left panel: original clause */}
-                    <div className="clause-original">
-                      <div className="clause-panel-label">
-                        📋 Original Clause
-                      </div>
-                      <p className="clause-text-original">
-                        {truncateClause(clause.text)}
-                      </p>
-                    </div>
-
-                    {/* Right panel: analysis */}
-                    <div className="clause-analysis">
-                      <div className="clause-panel-label">
-                        🔍 Risk Analysis
-                      </div>
-
-                      {/* Risk badge */}
-                      <span className={`risk-badge ${risk.className}`}>
-                        {risk.emoji} {risk.label}
-                      </span>
-
-                      {/* Confidence */}
-                      {clause.confidence && (
-                        <div className="confidence-tag">
-                          Confidence: {clause.confidence}
-                          {clause.rule_hit && ` · Rule: ${clause.rule_hit}`}
-                        </div>
-                      )}
-
-                      {/* Explanation */}
-                      {clause.explanation && (
-                        <p className="clause-explanation">{clause.explanation}</p>
-                      )}
-
-                      {/* Plain-language rewrite (YELLOW/RED only) */}
-                      {clause.rewrite && (
-                        <div className="clause-rewrite">
-                          {clause.rewrite}
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                );
-              })
+          {/* Document Type Header Badge */}
+          <div className="doc-category-banner">
+            <span className={`doc-category-chip ${categoryBadge.className}`}>
+              {categoryBadge.icon} {analysisResult.document_title || categoryBadge.label}
+            </span>
+            {analysisResult.memory_saved && (
+              <span className="memory-saved-chip">
+                ✓ Synchronized to Memory & Profile
+              </span>
             )}
           </div>
+
+          {/* ========================================================== */}
+          {/* VIEW 1: IDENTITY PROFILE CARD (AADHAAR / PAN)              */}
+          {/* ========================================================== */}
+          {category === 'identity_document' && (
+            <div className="identity-profile-view">
+              <div className="id-card-wrapper">
+                {/* ID Card Top Header */}
+                <div className="id-card-header">
+                  <div className="id-authority-badge">
+                    🏛️ {extracted.issuing_authority || 'Government of India'}
+                  </div>
+                  <div className="id-type-pill">
+                    {extracted.id_type || 'Identity Card'}
+                  </div>
+                </div>
+
+                {/* ID Card Body */}
+                <div className="id-card-body">
+                  <div className="id-main-details">
+                    <div className="id-name-label">NAME / नाम</div>
+                    <div className="id-name-value">{extracted.name || 'Not Detected'}</div>
+
+                    <div className="id-number-row">
+                      <span className="id-number-label">ID NUMBER:</span>
+                      <span className="id-number-value">{extracted.id_number || '•••• •••• ••••'}</span>
+                      {extracted.id_number && (
+                        <button
+                          className="btn-copy-id"
+                          onClick={() => copyToClipboard(extracted.id_number)}
+                          title="Copy ID Number"
+                        >
+                          {copiedId ? '✓ Copied' : '📋 Copy'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="id-meta-grid">
+                    <div className="id-meta-item">
+                      <span className="id-meta-label">DATE OF BIRTH / जन्म तिथि</span>
+                      <span className="id-meta-val">
+                        {extracted.dob || '—'} {extracted.dob_iso && <small>({extracted.dob_iso})</small>}
+                      </span>
+                    </div>
+
+                    <div className="id-meta-item">
+                      <span className="id-meta-label">GENDER / लिंग</span>
+                      <span className="id-meta-val">{extracted.gender || '—'}</span>
+                    </div>
+
+                    {extracted.care_of && (
+                      <div className="id-meta-item">
+                        <span className="id-meta-label">CARE OF / FATHER</span>
+                        <span className="id-meta-val">{extracted.care_of}</span>
+                      </div>
+                    )}
+
+                    {extracted.city && (
+                      <div className="id-meta-item">
+                        <span className="id-meta-label">CITY / DISTRICT</span>
+                        <span className="id-meta-val">{extracted.city}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {extracted.address ? (
+                    <div className="id-address-box">
+                      <span className="id-address-label">📍 ADDRESS / पता:</span>
+                      <p className="id-address-text">{extracted.address}</p>
+                    </div>
+                  ) : (extracted.card_side === 'front' || extracted.id_type === 'Aadhaar Card') ? (
+                    <div className="id-address-box id-front-side-tip">
+                      <span className="id-address-label">ℹ️ AADHAAR FRONT VERIFIED:</span>
+                      <p className="id-address-text">
+                        Name, DOB, Gender, and Masked ID verified successfully. Your permanent address is located on the back side of this card.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Prior Memory Synchronization Status Banner */}
+                <div className={`memory-status-banner ${analysisResult.memory_action}`}>
+                  {analysisResult.prior_info_found ? (
+                    analysisResult.memory_action === 'conflict_detected' ? (
+                      <div className="memory-banner-content">
+                        <span>⚠️ <strong>Discrepancy Detected:</strong> Details on this document differ from your existing profile.</span>
+                        <button className="btn-toggle-diff" onClick={() => setShowConflicts(!showConflicts)}>
+                          {showConflicts ? 'Hide Discrepancy' : 'View Discrepancy'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="memory-banner-content">
+                        <span>ℹ️ <strong>Intelligently Merged:</strong> Prior profile found. Verified identity details merged and existing fields preserved.</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="memory-banner-content">
+                      <span>✓ <strong>Saved to Memory:</strong> Verified identity details stored in your profile. The Document Drafter will automatically use these details.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Collapsible Conflicts Drawer */}
+                {showConflicts && analysisResult.conflicts && analysisResult.conflicts.length > 0 && (
+                  <div className="conflicts-drawer">
+                    <h4>Profile Discrepancies</h4>
+                    {analysisResult.conflicts.map((conf, idx) => (
+                      <div key={idx} className="conflict-row">
+                        <span className="conflict-field">{conf.field}:</span>
+                        <span className="conflict-prior">Profile was: "{conf.prior}"</span>
+                        <span className="conflict-extracted">Document has: "{conf.extracted}"</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Action footer */}
+                <div className="id-card-actions">
+                  <button
+                    className="btn-use-drafter"
+                    onClick={() => navigate('/document-drafter')}
+                  >
+                    📝 Start Legal Draft with these details →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================== */}
+          {/* VIEW 2: COURT JUDGMENT / ORDER CARD                       */}
+          {/* ========================================================== */}
+          {category === 'court_document' && (
+            <div className="court-verdict-view">
+              {/* Operative Verdict Banner */}
+              <div className={`verdict-banner ${
+                String(extracted.verdict || '').includes('GRANTED') || String(extracted.verdict || '').includes('ALLOWED')
+                  ? 'verdict-granted'
+                  : String(extracted.verdict || '').includes('DISMISSED') || String(extracted.verdict || '').includes('REJECTED')
+                  ? 'verdict-dismissed'
+                  : 'verdict-neutral'
+              }`}>
+                <div className="verdict-label">OPERATIVE OUTCOME</div>
+                <div className="verdict-title">{extracted.verdict || 'ORDER PASSED'}</div>
+              </div>
+
+              {/* Case Metadata Pills */}
+              <div className="court-meta-bar">
+                {extracted.court_name && (
+                  <div className="court-meta-pill">🏛️ {extracted.court_name}</div>
+                )}
+                {extracted.case_number && (
+                  <div className="court-meta-pill">📋 {extracted.case_number}</div>
+                )}
+                {extracted.decision_date && (
+                  <div className="court-meta-pill">📅 {extracted.decision_date}</div>
+                )}
+                {extracted.bench && (
+                  <div className="court-meta-pill">⚖️ Bench: {extracted.bench}</div>
+                )}
+              </div>
+
+              {/* Parties */}
+              {(extracted.petitioner || extracted.respondent) && (
+                <div className="parties-card">
+                  <div className="party-box">
+                    <span className="party-role">PETITIONER / APPLICANT:</span>
+                    <span className="party-name">{extracted.petitioner || '—'}</span>
+                  </div>
+                  <div className="party-vs">VERSUS</div>
+                  <div className="party-box">
+                    <span className="party-role">RESPONDENT / STATE:</span>
+                    <span className="party-name">{extracted.respondent || '—'}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Plain Language Bilingual Explanation */}
+              <div className="plain-explanation-card">
+                <div className="explanation-header">
+                  <span>💡 In Simple Words / सरल शब्दों में अदालत का फैसला</span>
+                </div>
+                <div className="explanation-body">
+                  <p className="explanation-en">{analysisResult.plain_language_summary}</p>
+                  {analysisResult.plain_language_summary_hi && (
+                    <p className="explanation-hi">{analysisResult.plain_language_summary_hi}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Operative directions & Key Actions */}
+              {extracted.key_actions && extracted.key_actions.length > 0 && (
+                <div className="directions-card">
+                  <h3>✅ Required Actions & Compliance Checklist</h3>
+                  <ul className="directions-list">
+                    {extracted.key_actions.map((act, i) => (
+                      <li key={i}>{act}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================== */}
+          {/* VIEW 3: RENTAL AGREEMENT TERMS VIEW                        */}
+          {/* ========================================================== */}
+          {analysisResult.document_type === 'rental_agreement' && (
+            <div className="rental-view-wrapper">
+              {/* Tab Navigation */}
+              <div className="rental-tabs">
+                <button
+                  className={`rental-tab-btn ${rentalTab === 'terms' ? 'active' : ''}`}
+                  onClick={() => setRentalTab('terms')}
+                >
+                  🏠 Key Lease Terms & Rights Summary
+                </button>
+                <button
+                  className={`rental-tab-btn ${rentalTab === 'clauses' ? 'active' : ''}`}
+                  onClick={() => setRentalTab('clauses')}
+                >
+                  🔍 Clause Risk Analysis ({analysisResult.total_clauses})
+                </button>
+              </div>
+
+              {rentalTab === 'terms' ? (
+                <div className="rental-terms-view">
+                  {/* Key Terms Grid */}
+                  <div className="terms-grid">
+                    <div className="term-card">
+                      <span className="term-label">MONTHLY RENT</span>
+                      <span className="term-val highlight">{extracted.monthly_rent || 'Not Stated'}</span>
+                      <small>{extracted.rent_due_day || 'Due monthly'}</small>
+                    </div>
+                    <div className="term-card">
+                      <span className="term-label">SECURITY DEPOSIT</span>
+                      <span className="term-val">{extracted.security_deposit || 'Not Stated'}</span>
+                      <small>{extracted.deposit_refund_terms || 'Refundable'}</small>
+                    </div>
+                    <div className="term-card">
+                      <span className="term-label">TENURE / DURATION</span>
+                      <span className="term-val">{extracted.lease_duration || '11 Months'}</span>
+                    </div>
+                    <div className="term-card">
+                      <span className="term-label">NOTICE PERIOD</span>
+                      <span className="term-val">{extracted.notice_period || '1 Month'}</span>
+                    </div>
+                  </div>
+
+                  {/* Parties & Property Address */}
+                  <div className="rental-parties-box">
+                    <div className="rental-party">
+                      <strong>Landlord / Lessor:</strong> {extracted.landlord_name || '—'}
+                    </div>
+                    <div className="rental-party">
+                      <strong>Tenant / Lessee:</strong> {extracted.tenant_name || '—'}
+                    </div>
+                    {extracted.property_address && (
+                      <div className="rental-address">
+                        <strong>Rented Premises:</strong> {extracted.property_address}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Plain Language Summary */}
+                  <div className="plain-explanation-card">
+                    <div className="explanation-header">
+                      <span>📘 Tenancy Explanation & Legal Protection</span>
+                    </div>
+                    <div className="explanation-body">
+                      <p className="explanation-en">{analysisResult.plain_language_summary}</p>
+                      {analysisResult.plain_language_summary_hi && (
+                        <p className="explanation-hi">{analysisResult.plain_language_summary_hi}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* ========================================================== */}
+          {/* VIEW 4: CLAUSE RISK ANALYSIS (AGREEMENTS & CONTRACTS)      */}
+          {/* ========================================================== */}
+          {(category === 'agreement_contract' || category === 'general_legal') &&
+           (analysisResult.document_type !== 'rental_agreement' || rentalTab === 'clauses') && (
+            <div className="contract-clauses-view">
+              {/* Summary stat cards */}
+              <div className="results-summary-bar">
+                <div className="summary-stat-card total">
+                  <div className="stat-number">{analysisResult.total_clauses}</div>
+                  <div className="stat-label">Total Clauses</div>
+                </div>
+                <div className="summary-stat-card green">
+                  <div className="stat-number">{analysisResult.green_count}</div>
+                  <div className="stat-label">🟢 Safe</div>
+                </div>
+                <div className="summary-stat-card yellow">
+                  <div className="stat-number">{analysisResult.yellow_count}</div>
+                  <div className="stat-label">🟡 Caution</div>
+                </div>
+                <div className="summary-stat-card red">
+                  <div className="stat-number">{analysisResult.red_count}</div>
+                  <div className="stat-label">🔴 High Risk</div>
+                </div>
+              </div>
+
+              {/* Filter + header */}
+              <div className="results-header">
+                <h2>Clause-by-Clause Risk Review</h2>
+                <div className="filter-pills" role="group" aria-label="Filter clauses by risk level">
+                  {['all', 'green', 'yellow', 'red'].map((f) => (
+                    <button
+                      key={f}
+                      id={`filter-${f}`}
+                      className={`filter-pill ${activeFilter === f ? `active-${f}` : ''}`}
+                      onClick={() => setActiveFilter(f)}
+                      aria-pressed={activeFilter === f}
+                    >
+                      {f === 'all' ? 'All' : RISK_CONFIG[f].emoji + ' ' + RISK_CONFIG[f].label}
+                      {f !== 'all' && ` (${analysisResult[`${f}_count`]})`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Clause cards */}
+              <div className="clauses-list">
+                {filteredClauses.length === 0 ? (
+                  <p className="empty-filter-msg">
+                    No {activeFilter} clauses found in this document.
+                  </p>
+                ) : (
+                  filteredClauses.map((clause, idx) => {
+                    const risk = RISK_CONFIG[clause.risk_level] ?? RISK_CONFIG.green;
+                    return (
+                      <article
+                        key={idx}
+                        className={`clause-card risk-${risk.className}`}
+                        aria-label={`Clause ${idx + 1}: ${risk.label} risk`}
+                      >
+                        {/* Left panel: original clause */}
+                        <div className="clause-original">
+                          <div className="clause-panel-label">
+                            📋 Original Clause
+                          </div>
+                          <p className="clause-text-original">
+                            {truncateClause(clause.text)}
+                          </p>
+                        </div>
+
+                        {/* Right panel: analysis */}
+                        <div className="clause-analysis">
+                          <div className="clause-panel-label">
+                            🔍 Risk Analysis
+                          </div>
+
+                          {/* Risk badge */}
+                          <span className={`risk-badge ${risk.className}`}>
+                            {risk.emoji} {risk.label}
+                          </span>
+
+                          {/* Confidence */}
+                          {clause.confidence && (
+                            <div className="confidence-tag">
+                              Confidence: {clause.confidence}
+                              {clause.rule_hit && ` · Rule: ${clause.rule_hit}`}
+                            </div>
+                          )}
+
+                          {/* Explanation */}
+                          {clause.explanation && (
+                            <p className="clause-explanation">{clause.explanation}</p>
+                          )}
+
+                          {/* Plain-language rewrite (YELLOW/RED only) */}
+                          {clause.rewrite && (
+                            <div className="clause-rewrite">
+                              {clause.rewrite}
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
         </section>
       )}
     </div>
