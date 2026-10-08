@@ -232,3 +232,64 @@
   font-size: 0.85rem;
   font-style: italic;
 }
+
+/* modified */
+/* =========================================================
+   Legal Source Verification Indicator
+   ========================================================= */
+
+.verification-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  background: #f7f7f7;
+  border: 1px solid #e5e5e5;
+}
+
+/* Small status dot */
+.verification-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Green — Verified */
+.verification-badge.verified {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.verification-badge.verified .verification-dot {
+  background: #22c55e;
+}
+
+/* Yellow — Verified with Scope */
+.verification-badge.verified_with_scope {
+  color: #854d0e;
+  background: #fefce8;
+  border-color: #fde68a;
+}
+
+.verification-badge.verified_with_scope .verification-dot {
+  background: #eab308;
+}
+
+/* Red — Unverified */
+.verification-badge.unverified {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.verification-badge.unverified .verification-dot {
+  background: #ef4444;
+}

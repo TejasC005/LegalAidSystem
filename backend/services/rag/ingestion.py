@@ -24,7 +24,7 @@ from services.rag.embedder import BGEM3Embedder
 logger = logging.getLogger(__name__)
 
 # Default seed dataset location relative to backend root
-DEFAULT_SEED_FILE = Path(__file__).parent.parent.parent / "data" / "knowledge_base" / "rights_seed.json"
+DEFAULT_SEED_FILE = Path(__file__).parent.parent.parent / "data" / "knowledge_base" / "rights_seed_verified_v1.json"
 
 
 class LegalIngestionPipeline:
@@ -77,13 +77,31 @@ class LegalIngestionPipeline:
 
             payload = {
                 "chunk_id": chunk_id,
+
+                # Legal content
                 "topic": record.get("topic", ""),
                 "act_name": record.get("act_name", ""),
                 "section": record.get("section", ""),
                 "title": record.get("title", ""),
                 "content": record.get("content", ""),
+
+                # Source information
                 "source_doc": record.get("source_doc", ""),
+                "source_type": record.get("source_type", ""),
+                "authority": record.get("authority", ""),
+                "official_source": record.get("official_source", ""),
+                "source_url": record.get("source_url", ""),
+
+                # Applicability
+                "jurisdiction": record.get("jurisdiction", ""),
+                "applicability": record.get("applicability", ""),
+
+                # Verification
                 "citation": record.get("citation", ""),
+                "verification_status": record.get(
+                    "verification_status", "unverified"
+                ),
+                "last_verified": record.get("last_verified", ""),
             }
 
             # Use integer or string ID for Qdrant point struct

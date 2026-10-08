@@ -49,21 +49,40 @@ function RightsExplainer() {
     try {
       const response = await sendQuery(q.trim());
       const data = response.data;
+      console.log('LEXIS API RESPONSE:', data);
+      console.log('LEXIS AGENTS:', data.agents);
+      console.log('LEXIS SCRATCHPAD:', data.scratchpad);
 
       // Extract metadata citations from scratchpad if available
+      // Extract citations and verification status from specialist metadata
+      // Extract citations and verification status from specialist agents
       let citations = [];
-      if (data.scratchpad) {
-        data.scratchpad.forEach((record) => {
-          if (record.metadata && record.metadata.citations) {
+      let verificationStatus = 'unverified';
+
+      // The API exposes specialist results under `agents`
+      const agentRecords = data.agents || data.scratchpad || [];
+
+      agentRecords.forEach((record) => {
+        if (record.metadata) {
+          if (record.metadata.citations) {
             citations = [...citations, ...record.metadata.citations];
           }
-        });
-      }
+
+          // Only use verification status from the Rights Explainer
+          if (
+            record.metadata.agent === 'RightsExplainerAgent' &&
+            record.metadata.verification_status
+          ) {
+            verificationStatus = record.metadata.verification_status;
+          }
+        }
+      });
 
       const agentMsg = {
         sender: 'agent',
         text: data.final_response,
         citations: Array.from(new Set(citations)),
+        verificationStatus,
         status: data.status,
         timestamp: new Date(),
       };
@@ -129,6 +148,19 @@ function RightsExplainer() {
               </span>
               <div className="message-bubble">
                 {msg.text}
+                {msg.sender === 'agent' && (
+                  <div className={`verification-badge ${msg.verificationStatus || 'unverified'}`}>
+                    <span className="verification-dot"></span>
+
+                    <span>
+                      {msg.verificationStatus === 'verified'
+                        ? 'Verified'
+                        : msg.verificationStatus === 'verified_with_scope'
+                          ? 'Verified with Scope'
+                          : 'Unverified / Not Verified'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Verified Citation Card */}
                 {msg.citations && msg.citations.length > 0 && (
