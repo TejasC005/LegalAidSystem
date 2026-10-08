@@ -435,14 +435,32 @@ async def _run_specialist_work(
     if intent == AgentIntent.RIGHTS:
         from agents.rights_agent.agent import get_rights_agent
         from core.config import get_settings
+
         rights_agent = get_rights_agent()
         response_text, citations, status = await rights_agent.explain_rights(query)
+
+        # Get verification status from the highest-ranked confident legal chunk
+        retrieved = rights_agent.retrieve_relevant_chunks(query, top_k=3)
+
+        verification_status = "unverified"
+
+        for payload, score in retrieved:
+            if score >= 0.25:
+                verification_status = payload.get(
+                    "verification_status",
+                    "unverified"
+                )
+                break
+
         metadata = {
             "citations": citations,
+            "verification_status": verification_status,
             "agent": "RightsExplainerAgent",
             "model": "gpt-4o-mini / BGE-M3",
         }
+
         llm_calls = 1 if (get_settings().OPENAI_API_KEY and status == "ok") else 0
+
         return response_text, metadata, llm_calls
 
     if intent == AgentIntent.DRAFT:
