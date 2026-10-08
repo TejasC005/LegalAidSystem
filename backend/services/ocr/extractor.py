@@ -144,23 +144,81 @@ def _extract_from_pdf(file_bytes: bytes) -> str:
     return full_text
 
 
-def _extract_from_image(file_bytes: bytes) -> str:
-    """
-    Extracts text from a JPEG, PNG, or WebP image using Tesseract OCR.
+def _find_tesseract_binary() -> Optional[str]:
+    """Scans system PATH and common Windows installation directories for tesseract executable."""
+    import shutil
+    import os
+    which_tess = shutil.which("tesseract")
+    if which_tess:
+        return which_tess
 
-    Requires:
-      - Pillow (`pip install Pillow`)
-      - pytesseract (`pip install pytesseract`)
-      - Tesseract binary on PATH
+    common_windows_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        os.path.expanduser(r"~\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"),
+    ]
+    for p in common_windows_paths:
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def _preprocess_image(image_bytes: bytes) -> bytes:
     """
-    return _run_tesseract(file_bytes)
+    Normalizes EXIF orientation (fixing mobile camera photo rotation)
+    and downscales oversized images (max 2048px) to reduce transfer latency
+    and prevent API timeouts while preserving crisp text legibility.
+    """
+    try:
+        from PIL import Image, ImageOps
+        img = Image.open(io.BytesIO(image_bytes))
+
+        # 1. Normalize EXIF orientation tag
+        img = ImageOps.exif_transpose(img)
+
+        # 2. Downscale if longest dimension exceeds 2048px
+        max_dim = 2048
+        if max(img.size) > max_dim:
+            img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+
+        # 3. Convert RGBA to RGB for standard JPEG encoding
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        out_io = io.BytesIO()
+        img.save(out_io, format="JPEG", quality=90)
+        return out_io.getvalue()
+    except Exception as exc:
+        logger.warning("Image pre-processing failed, using raw bytes: %s", exc)
+        return image_bytes
+
+
+def _extract_from_image(file_bytes: bytes, content_type: str = "image/jpeg") -> str:
+    """
+    Extracts text from a JPEG, PNG, or WebP image.
+    Applies EXIF normalization, attempts local Tesseract OCR, and falls back to
+    resilient multi-model Gemini/OpenAI Multimodal Vision.
+    """
+    processed_bytes = _preprocess_image(file_bytes)
+
+    text = _run_tesseract(processed_bytes)
+    if text.strip():
+        return text
+
+    # Fallback to Multimodal Vision cascade
+    logger.info("Local OCR empty or unavailable. Attempting Multimodal Vision OCR cascade...")
+    vision_text = _run_gemini_vision(processed_bytes, mime_type=content_type)
+    if vision_text.strip():
+        logger.info("Multimodal Vision OCR extracted %d characters", len(vision_text))
+        return vision_text
+
+    return text
 
 
 def _run_tesseract(image_bytes: bytes) -> str:
     """
     Runs Tesseract OCR on raw image bytes and returns extracted text.
-
-    Returns empty string if Tesseract is not installed (graceful degradation).
+    Configures tesseract_cmd if found in common Windows locations.
     """
     try:
         from PIL import Image
@@ -172,12 +230,121 @@ def _run_tesseract(image_bytes: bytes) -> str:
         )
         return ""
 
+    tess_path = _find_tesseract_binary()
+    if tess_path:
+        pytesseract.pytesseract.tesseract_cmd = tess_path
+
     try:
         image = Image.open(io.BytesIO(image_bytes))
-        # lang='eng+hin' would add Hindi support if Tesseract's Hindi language pack is installed.
-        # Default 'eng' is used here for maximum compatibility in dev.
         text = pytesseract.image_to_string(image, lang="eng")
         return text.strip()
     except Exception as exc:
         logger.warning("Tesseract OCR error: %s", exc)
         return ""
+
+
+def _run_gemini_vision(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
+    """
+    Multimodal Vision OCR fallback using Google GenAI SDK with multi-model cascade.
+    Sequentially attempts active flash models (gemini-2.5-flash, gemini-flash-latest,
+    gemini-3.8-flash, gemini-1.5-flash) and falls back to OpenAI Vision if needed.
+    """
+    from core.config import get_settings
+    settings = get_settings()
+
+    # ── Tier 1: Google Gemini Multi-Model Cascade ──────────────────────────────
+    api_key = settings.GEMINI_API_KEY
+    if api_key and not api_key.startswith("sk-replace"):
+        # Prioritize high-availability active flash and lite models
+        candidate_models = [
+            settings.GEMINI_MODEL_DEV or "gemini-3.5-flash",
+            "gemini-3.5-flash",
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.8-flash",
+            "gemini-flash-latest",
+        ]
+        # Preserve order while deduplicating
+        seen = set()
+        models_to_try = [m for m in candidate_models if not (m in seen or seen.add(m))]
+
+        try:
+            import time
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=api_key)
+
+            for model_name in models_to_try:
+                for attempt in range(2):
+                    try:
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=[
+                                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                                "Extract and transcribe all text from this document image verbatim. "
+                                "Include all names (in both English and Devanagari/regional script if present), "
+                                "identification numbers, addresses, dates, and clauses accurately. "
+                                "Return only the extracted text without introductory commentary."
+                            ]
+                        )
+                        text = response.text.strip() if response.text else ""
+                        if text:
+                            logger.info("Gemini Vision OCR succeeded with model '%s' (%d chars)", model_name, len(text))
+                            return text
+                        break
+                    except Exception as exc:
+                        err_str = str(exc)
+                        logger.warning(
+                            "Gemini Vision OCR attempt %d failed with model '%s': %s",
+                            attempt + 1,
+                            model_name,
+                            err_str[:200],
+                        )
+                        # On temporary rate limits (429) or transient server load (503), wait 1s and retry once
+                        if attempt == 0 and ("429" in err_str or "503" in err_str):
+                            time.sleep(1.0)
+                            continue
+                        break
+        except Exception as client_exc:
+            logger.warning("Google GenAI client initialization failed: %s", client_exc)
+
+    # ── Tier 2: OpenAI GPT-4o-mini Vision Fallback ─────────────────────────────
+    openai_key = settings.OPENAI_API_KEY
+    if openai_key and not openai_key.startswith("sk-replace"):
+        try:
+            import base64
+            from openai import OpenAI
+            b64_img = base64.b64encode(image_bytes).decode("utf-8")
+            oai_client = OpenAI(api_key=openai_key)
+            completion = oai_client.chat.completions.create(
+                model=settings.OPENAI_MODEL_DEV or "gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Extract and transcribe all text from this document image verbatim. "
+                                        "Include all names, identification numbers, addresses, dates, and clauses. "
+                                        "Return only the extracted text."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mime_type};base64,{b64_img}"}
+                            }
+                        ]
+                    }
+                ]
+            )
+            oai_text = (completion.choices[0].message.content or "").strip()
+            if oai_text:
+                logger.info("OpenAI Vision OCR fallback succeeded (%d chars)", len(oai_text))
+                return oai_text
+        except Exception as oai_exc:
+            logger.warning("OpenAI Vision OCR fallback failed: %s", oai_exc)
+
+    return ""
+

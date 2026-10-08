@@ -60,8 +60,12 @@ class ProfileDocument(BaseModel):
     """Sub-document containing extended citizen profile details."""
     full_name: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
     preferred_language: Optional[PreferredLanguage] = None
     date_of_birth: Optional[str] = None  # Expected ISO format: YYYY-MM-DD
+    id_verified: bool = False
+    id_type: Optional[str] = None       # "Aadhaar Card", "PAN Card", etc.
+    id_number_masked: Optional[str] = None
     profile_picture_url: Optional[str] = None
     notification_preference: NotificationPreference = NotificationPreference.SMS
 
@@ -149,6 +153,7 @@ class ProfileUpdateRequest(BaseModel):
     """Body for PATCH /users/me/profile"""
     full_name: Optional[str] = Field(None, max_length=100)
     address: Optional[str] = Field(None, max_length=500)
+    city: Optional[str] = Field(None, max_length=100)
     preferred_language: Optional[PreferredLanguage] = None
     date_of_birth: Optional[str] = Field(None, description="Format: YYYY-MM-DD")
     profile_picture_url: Optional[str] = None
