@@ -33,6 +33,19 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
+  ClipboardList,
+  Landmark,
+  ShoppingCart,
+  Scale,
+  ExternalLink,
+  CheckCircle2,
+  Info,
+  Link2,
+  AlertTriangle,
+  Clock,
+  FileText
+} from 'lucide-react';
+import {
   lookupFilingAuthority,
   lookupFilingByDraftId,
   getFilingAuthorities,
@@ -41,9 +54,9 @@ import './FilingGuide.css';
 
 // Human-readable labels for each doc_type
 const DOC_TYPE_LABELS = {
-  rti_application: '🏛️ RTI Application',
-  consumer_complaint: '🛒 Consumer Complaint',
-  legal_notice: '⚖️ Legal Demand Notice',
+  rti_application: 'RTI Application',
+  consumer_complaint: 'Consumer Complaint',
+  legal_notice: 'Legal Demand Notice',
 };
 
 function FilingGuide() {
@@ -146,7 +159,9 @@ function FilingGuide() {
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="filing-header">
         <div className="filing-title-area">
-          <span className="filing-icon">📋</span>
+          <div className="filing-icon-wrap">
+            <ClipboardList className="filing-icon-svg" size={26} strokeWidth={2.2} />
+          </div>
           <div>
             <h1 className="filing-title">Complaint Filing Guide</h1>
             <p className="filing-subtitle">
@@ -154,13 +169,15 @@ function FilingGuide() {
             </p>
           </div>
         </div>
-        <span className="badge-filing">DB-Verified · No Fabrication</span>
+        <span className="badge-filing">DB-Verified · Official Acts</span>
       </div>
 
       {/* ── Handoff Banner (from Document Drafter) ────────────────────────── */}
       {isHandoff && authorityRecord && (
         <div className="handoff-banner">
-          <span className="handoff-icon">🔗</span>
+          <div className="handoff-icon-wrap">
+            <Link2 className="handoff-icon-svg" size={20} />
+          </div>
           <div>
             <strong>Carried from your {authorityRecord.doc_type_name} draft</strong>
             <p>
@@ -175,7 +192,12 @@ function FilingGuide() {
       )}
 
       {/* ── Error message ──────────────────────────────────────────────────── */}
-      {errorMsg && <div className="filing-error-banner">⚠️ {errorMsg}</div>}
+      {errorMsg && (
+        <div className="filing-error-banner">
+          <AlertTriangle size={18} />
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
       {/* ── Manual Lookup Form (shown when no result yet) ─────────────────── */}
       {!authorityRecord && !isLoading && (
@@ -191,42 +213,50 @@ function FilingGuide() {
               {[
                 {
                   id: 'rti_application',
-                  icon: '🏛️',
+                  icon: Landmark,
                   label: 'RTI Application',
                   desc: 'File with the PIO of the public authority under RTI Act 2005',
                   portal: 'rtionline.gov.in',
                 },
                 {
                   id: 'consumer_complaint',
-                  icon: '🛒',
+                  icon: ShoppingCart,
                   label: 'Consumer Complaint',
                   desc: 'File with the Consumer Commission (District / State / National)',
                   portal: 'edaakhil.nic.in',
                 },
                 {
                   id: 'legal_notice',
-                  icon: '⚖️',
+                  icon: Scale,
                   label: 'Legal Demand Notice',
                   desc: 'Serve directly to the opposite party (registered post / RPAD)',
                   portal: 'No portal — direct service',
                 },
-              ].map((item) => (
-                <div
-                  key={item.id}
-                  id={`doc-type-card-${item.id}`}
-                  className={`doc-type-card ${selectedDocType === item.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedDocType(item.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && setSelectedDocType(item.id)}
-                  aria-pressed={selectedDocType === item.id}
-                >
-                  <div className="doc-type-card-icon">{item.icon}</div>
-                  <h3>{item.label}</h3>
-                  <p>{item.desc}</p>
-                  <div className="doc-type-portal-hint">🔗 {item.portal}</div>
-                </div>
-              ))}
+              ].map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    id={`doc-type-card-${item.id}`}
+                    className={`doc-type-card ${selectedDocType === item.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedDocType(item.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelectedDocType(item.id)}
+                    aria-pressed={selectedDocType === item.id}
+                  >
+                    <div className="doc-type-card-icon">
+                      <IconComponent size={26} strokeWidth={2} />
+                    </div>
+                    <h3>{item.label}</h3>
+                    <p>{item.desc}</p>
+                    <div className="doc-type-portal-hint">
+                      <ExternalLink size={13} />
+                      <span>{item.portal}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <button
               type="submit"
@@ -268,7 +298,10 @@ function FilingGuide() {
                 <p className="authority-card-short">{authorityRecord.authority_short}</p>
               </div>
               {authorityRecord.verified && (
-                <span className="verified-badge">✅ Verified</span>
+                <span className="verified-badge">
+                  <CheckCircle2 size={13} />
+                  <span>Verified Authority</span>
+                </span>
               )}
             </div>
 
@@ -277,7 +310,7 @@ function FilingGuide() {
             {/* Portal link */}
             {authorityRecord.portal_url && (
               <div className="portal-section">
-                <div className="section-label">🌐 Official Portal</div>
+                <div className="section-label">Official Portal</div>
                 <a
                   href={authorityRecord.portal_url}
                   target="_blank"
@@ -285,7 +318,8 @@ function FilingGuide() {
                   className="portal-link-btn"
                   id="btn-visit-portal"
                 >
-                  {authorityRecord.portal_name} ↗
+                  <span>{authorityRecord.portal_name}</span>
+                  <ExternalLink size={15} />
                 </a>
                 {authorityRecord.portal_scope && (
                   <p className="portal-scope-note">{authorityRecord.portal_scope}</p>
@@ -296,7 +330,7 @@ function FilingGuide() {
             {/* Filing tiers */}
             {authorityRecord.filing_tiers && authorityRecord.filing_tiers.length > 0 && (
               <div className="filing-tiers-section">
-                <div className="section-label">📊 Filing Tiers</div>
+                <div className="section-label">Filing Hierarchy &amp; Tiers</div>
                 <div className="tiers-list">
                   {authorityRecord.filing_tiers.map((tier, idx) => (
                     <div key={idx} className="tier-card">
@@ -306,12 +340,14 @@ function FilingGuide() {
                         <p>{tier.description}</p>
                         {tier.deadline_to_respond && (
                           <span className="tier-deadline">
-                            ⏱ Response: {tier.deadline_to_respond}
+                            <Clock size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                            Response: {tier.deadline_to_respond}
                           </span>
                         )}
                         {tier.jurisdiction && (
                           <span className="tier-jurisdiction">
-                            ⚖️ Jurisdiction: {tier.jurisdiction}
+                            <Scale size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                            Jurisdiction: {tier.jurisdiction}
                           </span>
                         )}
                       </div>
@@ -324,7 +360,7 @@ function FilingGuide() {
             {/* Fee information */}
             {authorityRecord.fee && (
               <div className="fee-section">
-                <div className="section-label">💰 Fee</div>
+                <div className="section-label">Statutory Filing Fee</div>
                 <div className="fee-grid">
                   {authorityRecord.fee.amount_central && (
                     <div className="fee-item">
@@ -349,7 +385,7 @@ function FilingGuide() {
                       <span className="fee-label">State fees:</span>
                       <span className="fee-value">
                         {authorityRecord.fee.state_fees === 'needs_verification'
-                          ? '⚠️ Varies by state — verify with your state authority'
+                          ? 'Varies by state — verify with your state authority'
                           : authorityRecord.fee.state_fees}
                       </span>
                     </div>
@@ -359,7 +395,7 @@ function FilingGuide() {
                       <span className="fee-label">Court filing fee:</span>
                       <span className="fee-value">
                         {authorityRecord.fee.court_filing_fee === 'needs_verification'
-                          ? '⚠️ State-specific — verify with your local court or lawyer'
+                          ? 'State-specific — verify with your local court or lawyer'
                           : authorityRecord.fee.court_filing_fee}
                       </span>
                     </div>
@@ -397,12 +433,12 @@ function FilingGuide() {
             {/* Required documents checklist */}
             {authorityRecord.required_documents && authorityRecord.required_documents.length > 0 && (
               <div className="documents-section">
-                <div className="section-label">📁 Required Documents</div>
+                <div className="section-label">Required Documents Checklist</div>
                 <ul className="documents-checklist">
                   {authorityRecord.required_documents.map((doc, idx) => (
                     <li key={idx} className="document-item">
-                      <span className="check-icon">☐</span>
-                      {doc}
+                      <CheckCircle2 size={16} className="check-icon-svg" />
+                      <span>{doc}</span>
                     </li>
                   ))}
                 </ul>
@@ -412,10 +448,13 @@ function FilingGuide() {
             {/* Important notes */}
             {authorityRecord.important_notes && authorityRecord.important_notes.length > 0 && (
               <div className="notes-section">
-                <div className="section-label">📌 Important Notes</div>
+                <div className="section-label">Important Legal Notes</div>
                 <ul className="notes-list">
                   {authorityRecord.important_notes.map((note, idx) => (
-                    <li key={idx}>{note}</li>
+                    <li key={idx}>
+                      <Info size={15} className="note-bullet-icon" />
+                      <span>{note}</span>
+                    </li>
                   ))}
                 </ul>
               </div>

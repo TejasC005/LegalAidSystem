@@ -39,21 +39,31 @@
 
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import {
+  Scale,
+  LayoutDashboard,
+  FileEdit,
+  FileSearch,
+  ShieldAlert,
+  ClipboardList,
+  FolderLock,
+  Settings,
+  Sliders,
+  Briefcase
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './AppLayout.css';
 
 // ── Navigation links for all 6 LEXIS features ─────────────────────────────
-// We define them as data so the JSX stays clean.
-// Each object: { path, label, module } — module tells us which module will build it.
 const NAV_LINKS = [
-  { path: '/',                 label: '🏠  Dashboard',           module: null    },
-  { path: '/rights-explainer', label: '⚖️  Rights Explainer',    module: 5       },
-  { path: '/document-drafter', label: '📄  Document Drafter',    module: 6       },
-  { path: '/document-analyzer',label: '🔍  Document Analyzer',   module: 7       },
-  { path: '/scam-detection',   label: '🚨  Scam Detection',      module: 8       },
-  { path: '/filing-guide',     label: '📋  Filing Guide',        module: 9       },
-  { path: '/vault-deadlines',  label: '🔐  Vault & Deadlines',   module: 10      },
-  { path: '/settings',         label: '⚙️  Settings',            module: 13      },
+  { path: '/',                 label: 'Dashboard',           icon: LayoutDashboard, module: null    },
+  { path: '/rights-explainer', label: 'Rights Explainer',    icon: Scale,           module: 5       },
+  { path: '/document-drafter', label: 'Document Drafter',    icon: FileEdit,        module: 6       },
+  { path: '/document-analyzer',label: 'Document Analyzer',   icon: FileSearch,      module: 7       },
+  { path: '/scam-detection',   label: 'Scam Detection',      icon: ShieldAlert,     module: 8       },
+  { path: '/filing-guide',     label: 'Filing Guide',        icon: ClipboardList,   module: 9       },
+  { path: '/vault-deadlines',  label: 'Vault & Deadlines',   icon: FolderLock,      module: 10      },
+  { path: '/settings',         label: 'Settings',            icon: Settings,        module: 13      },
 ];
 
 
@@ -67,8 +77,9 @@ function AppLayout() {
       {/* ── Header ───────────────────────────────────────────────────── */}
       <header className="app-header">
         <div className="app-header__brand">
-          {/* The ⚖ symbol + product name */}
-          <span className="app-header__logo">⚖</span>
+          <div className="app-header__logo-wrap">
+            <Scale className="app-header__logo-icon" size={22} strokeWidth={2.2} />
+          </div>
           <span className="app-header__name">LEXIS</span>
           <span className="app-header__tagline">Legal Aid, Autonomously</span>
         </div>
@@ -93,14 +104,8 @@ function AppLayout() {
         {/* ── Sidebar navigation ───────────────────────────────────── */}
         <nav className="app-sidebar" aria-label="Main navigation">
           <ul className="app-sidebar__list">
-            {NAV_LINKS.map(({ path, label }) => (
+            {NAV_LINKS.map(({ path, label, icon: IconComponent }) => (
               <li key={path} className="app-sidebar__item">
-                {/*
-                  NavLink is like a regular <a> tag, but React Router aware.
-                  It automatically adds className="active" when the URL matches.
-                  `end` on the "/" link means it only activates on exact "/",
-                  not on every route (since all routes start with /).
-                */}
                 <NavLink
                   to={path}
                   end={path === '/'}   // exact match for home only
@@ -109,13 +114,14 @@ function AppLayout() {
                              : 'app-sidebar__link'
                   }
                 >
-                  {label}
+                  <IconComponent className="app-sidebar__icon" size={18} strokeWidth={2} />
+                  <span>{label}</span>
                 </NavLink>
               </li>
             ))}
             {/* Show Admin Panel link only when user has role='admin' */}
             {user?.role === 'admin' && (
-              <li className="app-sidebar__item" style={{ marginTop: '1rem', borderTop: '1px solid #334155', paddingTop: '0.5rem' }}>
+              <li className="app-sidebar__item" style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.5rem' }}>
                 <NavLink
                   to="/admin"
                   className={({ isActive }) =>
@@ -124,13 +130,14 @@ function AppLayout() {
                   }
                   style={{ color: '#38bdf8' }}
                 >
-                  ⚙️  Admin Panel
+                  <Sliders className="app-sidebar__icon" size={18} strokeWidth={2} />
+                  <span>Admin Panel</span>
                 </NavLink>
               </li>
             )}
             {/* Show Lawyer Portal link only when user has role='lawyer' — Module 13 scaffold */}
             {user?.role === 'lawyer' && (
-              <li className="app-sidebar__item" style={{ marginTop: '1rem', borderTop: '1px solid #334155', paddingTop: '0.5rem' }}>
+              <li className="app-sidebar__item" style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.5rem' }}>
                 <NavLink
                   to="/lawyer"
                   className={({ isActive }) =>
@@ -139,7 +146,8 @@ function AppLayout() {
                   }
                   style={{ color: '#fbbf24' }}
                 >
-                  ⚖️  Lawyer Portal
+                  <Briefcase className="app-sidebar__icon" size={18} strokeWidth={2} />
+                  <span>Lawyer Portal</span>
                 </NavLink>
               </li>
             )}

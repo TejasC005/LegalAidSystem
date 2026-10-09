@@ -88,6 +88,7 @@ is wired here as a comment block to make Module 11 a simple addition.
 
 import asyncio
 import logging
+import re
 import time
 from typing import List
 from uuid import uuid4
@@ -220,16 +221,16 @@ def _keyword_classifier_fallback(query: str):
     matched = []
 
     keyword_map = {
-        AgentIntent.RIGHTS:  ["right", "rights", "law", "legal", "protection", "tenant", "landlord", "deposit", "worker", "employee", "consumer", "constitution", "posh", "harassment", "maternity"],
+        AgentIntent.RIGHTS:  ["right", "rights", "law", "legal", "protection", "tenant", "landlord", "deposit", "worker", "employee", "consumer", "constitution", "posh", "harassment", "maternity", "rti", "pio", "information"],
         AgentIntent.DRAFT:   ["draft", "write", "template", "agreement", "notice", "letter", "affidavit", "document"],
         AgentIntent.ANALYZE: ["analyze", "analyse", "review", "check", "clause", "contract", "risk", "flag"],
         AgentIntent.SCAM:    ["scam", "fraud", "fake", "suspicious", "cheat", "phishing", "lottery", "prize"],
-        AgentIntent.FILING:  ["file", "filing", "report", "complaint", "court", "police", "rti", "forum", "fir", "submit"],
+        AgentIntent.FILING:  ["file a complaint", "where to file", "how to file", "filing", "lodge complaint", "file complaint", "consumer forum", "court", "police station", "fir", "filing guide", "portal"],
         AgentIntent.VAULT:   ["save", "store", "remind", "reminder", "deadline", "expire", "document vault", "track"],
     }
 
     for intent, keywords in keyword_map.items():
-        if any(kw in q for kw in keywords):
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in keywords):
             matched.append(intent)
 
     confidence = 0.75 if matched else 0.0

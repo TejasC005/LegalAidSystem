@@ -10,12 +10,39 @@
  *      in English and Hindi, and operative directions checklists.
  *   3. Rental Agreements with key terms grids (Rent, Deposit, Tenure) and
  *      tab-switched clause risk reviews.
- *   4. Legal Contracts with color-coded clause-by-clause risk scoring (🟢🟡🔴).
+ *   4. Legal Contracts with color-coded clause-by-clause risk scoring.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  FileSearch,
+  UploadCloud,
+  UserCheck,
+  Scale,
+  Home,
+  FileText,
+  Image as ImageIcon,
+  File,
+  CheckCircle2,
+  AlertTriangle,
+  AlertOctagon,
+  Search,
+  X,
+  Landmark,
+  Copy,
+  Check,
+  MapPin,
+  Info,
+  FileEdit,
+  Calendar,
+  Lightbulb,
+  BookOpen,
+  ShieldCheck,
+  ArrowRight,
+  Loader2,
+} from 'lucide-react';
 import { uploadDocumentForAnalysis } from '../services/api';
 import './DocumentAnalyzer.css';
 
@@ -25,22 +52,9 @@ const MAX_SIZE_MB = 10;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const RISK_CONFIG = {
-  green:  { emoji: '🟢', label: 'Low Risk',    className: 'green'  },
-  yellow: { emoji: '🟡', label: 'Caution',     className: 'yellow' },
-  red:    { emoji: '🔴', label: 'High Risk',   className: 'red'    },
-};
-
-const FILE_ICONS = {
-  'application/pdf': '📄',
-  'image/jpeg':      '🖼️',
-  'image/png':       '🖼️',
-};
-
-const CATEGORY_BADGES = {
-  identity_document:  { icon: '🪪', label: 'Identity Document', className: 'cat-identity' },
-  court_document:     { icon: '⚖️', label: 'Court Order / Judgment', className: 'cat-court' },
-  agreement_contract: { icon: '🏠', label: 'Agreement / Lease', className: 'cat-contract' },
-  general_legal:      { icon: '📄', label: 'Legal Document', className: 'cat-general' },
+  green:  { label: 'Low Risk',    className: 'green'  },
+  yellow: { label: 'Caution',     className: 'yellow' },
+  red:    { label: 'High Risk',   className: 'red'    },
 };
 
 function formatBytes(bytes) {
@@ -130,7 +144,6 @@ function DocumentAnalyzer() {
     setAnalysisResult(null);
 
     try {
-      // Optional: pass session ID if stored in localStorage
       const storedSession = localStorage.getItem('lexis_active_session_id');
       const sessionId = (storedSession && storedSession !== 'undefined' && storedSession !== 'null') ? storedSession : null;
       const response = await uploadDocumentForAnalysis(selectedFile, sessionId);
@@ -164,18 +177,56 @@ function DocumentAnalyzer() {
   }) ?? [];
 
   const category = analysisResult?.document_category || 'agreement_contract';
-  const categoryBadge = CATEGORY_BADGES[category] || CATEGORY_BADGES.agreement_contract;
   const extracted = analysisResult?.extracted_info || {};
+
+  const renderCategoryIcon = (cat) => {
+    switch (cat) {
+      case 'identity_document':
+        return <UserCheck size={18} />;
+      case 'court_document':
+        return <Scale size={18} />;
+      case 'agreement_contract':
+        return <Home size={18} />;
+      default:
+        return <FileText size={18} />;
+    }
+  };
+
+  const getCategoryLabel = (cat) => {
+    switch (cat) {
+      case 'identity_document':
+        return 'Identity Document';
+      case 'court_document':
+        return 'Court Order / Judgment';
+      case 'agreement_contract':
+        return 'Agreement / Lease';
+      default:
+        return 'Legal Document';
+    }
+  };
+
+  const renderFileIcon = (mimeType) => {
+    if (mimeType === 'application/pdf') return <FileText size={24} color="#1a6b5a" />;
+    if (mimeType?.startsWith('image/')) return <ImageIcon size={24} color="#1a6b5a" />;
+    return <File size={24} color="#1a6b5a" />;
+  };
 
   return (
     <div className="analyzer-page">
-      {/* ── Page Header ──────────────────────────────────────────────── */}
+      {/* ── Page Header Banner ────────────────────────────────────────── */}
       <div className="analyzer-header">
-        <h1>📄 Intelligent Document Analyzer</h1>
-        <p>
-          Upload any legal document, Indian identity card (Aadhaar / PAN), rental agreement,
-          or court order for instant intelligence extraction, memory pre-filling, and risk scoring.
-        </p>
+        <div className="analyzer-header-content">
+          <div className="analyzer-icon-box">
+            <FileSearch size={28} color="#ffffff" />
+          </div>
+          <div>
+            <h1>Intelligent Document Analyzer</h1>
+            <p>
+              Upload any legal document, Indian identity card (Aadhaar / PAN), rental agreement,
+              or court order for instant intelligence extraction, memory pre-filling, and risk scoring.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ── Upload Zone ──────────────────────────────────────────────── */}
@@ -201,13 +252,15 @@ function DocumentAnalyzer() {
           aria-hidden="true"
         />
 
-        <span className="upload-icon">☁️</span>
+        <div className="upload-icon-container">
+          <UploadCloud size={44} className="upload-icon-svg" />
+        </div>
         <h3>
           {dragActive
             ? 'Drop your document here'
-            : 'Drag & drop your document here'}
+            : 'Drag & drop your document here, or browse files'}
         </h3>
-        <p>Aadhaar, PAN Card, Rental Agreement, Court Judgment, or Contract</p>
+        <p>Supported: Aadhaar, PAN Card, Rental Agreement, Court Judgment, or Commercial Contract</p>
 
         <div className="file-types">
           <span className="file-type-badge">PDF</span>
@@ -220,7 +273,7 @@ function DocumentAnalyzer() {
       {/* ── Client-side validation error ─────────────────────────────── */}
       {clientError && (
         <div className="error-card" role="alert">
-          <span>⚠️</span>
+          <AlertTriangle size={18} />
           <span>{clientError}</span>
         </div>
       )}
@@ -229,7 +282,7 @@ function DocumentAnalyzer() {
       {selectedFile && (
         <div className="selected-file-card">
           <span className="selected-file-icon">
-            {FILE_ICONS[selectedFile.type] ?? '📁'}
+            {renderFileIcon(selectedFile.type)}
           </span>
           <div className="selected-file-info">
             <div className="selected-file-name">{selectedFile.name}</div>
@@ -244,7 +297,8 @@ function DocumentAnalyzer() {
             disabled={isAnalyzing}
             aria-label="Remove selected file"
           >
-            ✕ Remove
+            <X size={14} />
+            <span>Remove</span>
           </button>
         </div>
       )}
@@ -257,7 +311,8 @@ function DocumentAnalyzer() {
           onClick={handleAnalyze}
           disabled={isAnalyzing || !selectedFile}
         >
-          🔍 Analyze & Extract Document
+          <Search size={18} />
+          <span>Analyze & Extract Document</span>
         </button>
       )}
 
@@ -265,8 +320,8 @@ function DocumentAnalyzer() {
       {isAnalyzing && (
         <div className="progress-bar-wrapper" role="status" aria-live="polite">
           <div className="progress-label">
-            <span className="spinner" aria-hidden="true" />
-            Reading document, classifying structure, and extracting intelligence…
+            <Loader2 size={16} className="spinning-icon" />
+            <span>Reading document, classifying structure, and extracting intelligence…</span>
           </div>
           <div className="progress-track">
             <div className="progress-fill" />
@@ -277,7 +332,7 @@ function DocumentAnalyzer() {
       {/* ── Server error ─────────────────────────────────────────────── */}
       {serverError && (
         <div className="error-card" role="alert">
-          <span>❌</span>
+          <AlertOctagon size={18} />
           <span>{serverError}</span>
         </div>
       )}
@@ -288,12 +343,14 @@ function DocumentAnalyzer() {
 
           {/* Document Type Header Badge */}
           <div className="doc-category-banner">
-            <span className={`doc-category-chip ${categoryBadge.className}`}>
-              {categoryBadge.icon} {analysisResult.document_title || categoryBadge.label}
+            <span className={`doc-category-chip cat-${category}`}>
+              {renderCategoryIcon(category)}
+              <span>{analysisResult.document_title || getCategoryLabel(category)}</span>
             </span>
             {analysisResult.memory_saved && (
               <span className="memory-saved-chip">
-                ✓ Synchronized to Memory & Profile
+                <CheckCircle2 size={15} />
+                <span>Synchronized to Memory & Profile</span>
               </span>
             )}
           </div>
@@ -307,7 +364,8 @@ function DocumentAnalyzer() {
                 {/* ID Card Top Header */}
                 <div className="id-card-header">
                   <div className="id-authority-badge">
-                    🏛️ {extracted.issuing_authority || 'Government of India'}
+                    <Landmark size={15} />
+                    <span>{extracted.issuing_authority || 'Government of India'}</span>
                   </div>
                   <div className="id-type-pill">
                     {extracted.id_type || 'Identity Card'}
@@ -329,7 +387,17 @@ function DocumentAnalyzer() {
                           onClick={() => copyToClipboard(extracted.id_number)}
                           title="Copy ID Number"
                         >
-                          {copiedId ? '✓ Copied' : '📋 Copy'}
+                          {copiedId ? (
+                            <>
+                              <Check size={13} />
+                              <span>Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={13} />
+                              <span>Copy</span>
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
@@ -365,12 +433,16 @@ function DocumentAnalyzer() {
 
                   {extracted.address ? (
                     <div className="id-address-box">
-                      <span className="id-address-label">📍 ADDRESS / पता:</span>
+                      <span className="id-address-label">
+                        <MapPin size={13} /> ADDRESS / पता:
+                      </span>
                       <p className="id-address-text">{extracted.address}</p>
                     </div>
                   ) : (extracted.card_side === 'front' || extracted.id_type === 'Aadhaar Card') ? (
                     <div className="id-address-box id-front-side-tip">
-                      <span className="id-address-label">ℹ️ AADHAAR FRONT VERIFIED:</span>
+                      <span className="id-address-label">
+                        <Info size={14} /> AADHAAR FRONT VERIFIED:
+                      </span>
                       <p className="id-address-text">
                         Name, DOB, Gender, and Masked ID verified successfully. Your permanent address is located on the back side of this card.
                       </p>
@@ -383,19 +455,28 @@ function DocumentAnalyzer() {
                   {analysisResult.prior_info_found ? (
                     analysisResult.memory_action === 'conflict_detected' ? (
                       <div className="memory-banner-content">
-                        <span>⚠️ <strong>Discrepancy Detected:</strong> Details on this document differ from your existing profile.</span>
+                        <span>
+                          <AlertTriangle size={15} style={{ verticalAlign: 'text-bottom', marginRight: 4 }} />
+                          <strong>Discrepancy Detected:</strong> Details on this document differ from your existing profile.
+                        </span>
                         <button className="btn-toggle-diff" onClick={() => setShowConflicts(!showConflicts)}>
                           {showConflicts ? 'Hide Discrepancy' : 'View Discrepancy'}
                         </button>
                       </div>
                     ) : (
                       <div className="memory-banner-content">
-                        <span>ℹ️ <strong>Intelligently Merged:</strong> Prior profile found. Verified identity details merged and existing fields preserved.</span>
+                        <span>
+                          <Info size={15} style={{ verticalAlign: 'text-bottom', marginRight: 4 }} />
+                          <strong>Intelligently Merged:</strong> Prior profile found. Verified identity details merged and existing fields preserved.
+                        </span>
                       </div>
                     )
                   ) : (
                     <div className="memory-banner-content">
-                      <span>✓ <strong>Saved to Memory:</strong> Verified identity details stored in your profile. The Document Drafter will automatically use these details.</span>
+                      <span>
+                        <CheckCircle2 size={15} style={{ verticalAlign: 'text-bottom', marginRight: 4 }} />
+                        <strong>Saved to Memory:</strong> Verified identity details stored in your profile. The Document Drafter will automatically use these details.
+                      </span>
                     </div>
                   )}
                 </div>
@@ -420,7 +501,8 @@ function DocumentAnalyzer() {
                     className="btn-use-drafter"
                     onClick={() => navigate('/document-drafter')}
                   >
-                    📝 Start Legal Draft with these details →
+                    <FileEdit size={16} />
+                    <span>Start Legal Draft with these details →</span>
                   </button>
                 </div>
               </div>
@@ -447,16 +529,28 @@ function DocumentAnalyzer() {
               {/* Case Metadata Pills */}
               <div className="court-meta-bar">
                 {extracted.court_name && (
-                  <div className="court-meta-pill">🏛️ {extracted.court_name}</div>
+                  <div className="court-meta-pill">
+                    <Landmark size={14} />
+                    <span>{extracted.court_name}</span>
+                  </div>
                 )}
                 {extracted.case_number && (
-                  <div className="court-meta-pill">📋 {extracted.case_number}</div>
+                  <div className="court-meta-pill">
+                    <FileText size={14} />
+                    <span>{extracted.case_number}</span>
+                  </div>
                 )}
                 {extracted.decision_date && (
-                  <div className="court-meta-pill">📅 {extracted.decision_date}</div>
+                  <div className="court-meta-pill">
+                    <Calendar size={14} />
+                    <span>{extracted.decision_date}</span>
+                  </div>
                 )}
                 {extracted.bench && (
-                  <div className="court-meta-pill">⚖️ Bench: {extracted.bench}</div>
+                  <div className="court-meta-pill">
+                    <Scale size={14} />
+                    <span>Bench: {extracted.bench}</span>
+                  </div>
                 )}
               </div>
 
@@ -467,7 +561,7 @@ function DocumentAnalyzer() {
                     <span className="party-role">PETITIONER / APPLICANT:</span>
                     <span className="party-name">{extracted.petitioner || '—'}</span>
                   </div>
-                  <div className="party-vs">VERSUS</div>
+                  <div className="party-vs">VS</div>
                   <div className="party-box">
                     <span className="party-role">RESPONDENT / STATE:</span>
                     <span className="party-name">{extracted.respondent || '—'}</span>
@@ -478,7 +572,8 @@ function DocumentAnalyzer() {
               {/* Plain Language Bilingual Explanation */}
               <div className="plain-explanation-card">
                 <div className="explanation-header">
-                  <span>💡 In Simple Words / सरल शब्दों में अदालत का फैसला</span>
+                  <Lightbulb size={17} color="#047857" />
+                  <span>In Simple Words / सरल शब्दों में अदालत का फैसला</span>
                 </div>
                 <div className="explanation-body">
                   <p className="explanation-en">{analysisResult.plain_language_summary}</p>
@@ -491,7 +586,10 @@ function DocumentAnalyzer() {
               {/* Operative directions & Key Actions */}
               {extracted.key_actions && extracted.key_actions.length > 0 && (
                 <div className="directions-card">
-                  <h3>✅ Required Actions & Compliance Checklist</h3>
+                  <div className="directions-header">
+                    <CheckCircle2 size={17} color="#059669" />
+                    <h3>Required Actions & Compliance Checklist</h3>
+                  </div>
                   <ul className="directions-list">
                     {extracted.key_actions.map((act, i) => (
                       <li key={i}>{act}</li>
@@ -513,13 +611,15 @@ function DocumentAnalyzer() {
                   className={`rental-tab-btn ${rentalTab === 'terms' ? 'active' : ''}`}
                   onClick={() => setRentalTab('terms')}
                 >
-                  🏠 Key Lease Terms & Rights Summary
+                  <Home size={15} />
+                  <span>Key Lease Terms & Rights Summary</span>
                 </button>
                 <button
                   className={`rental-tab-btn ${rentalTab === 'clauses' ? 'active' : ''}`}
                   onClick={() => setRentalTab('clauses')}
                 >
-                  🔍 Clause Risk Analysis ({analysisResult.total_clauses})
+                  <FileSearch size={15} />
+                  <span>Clause Risk Analysis ({analysisResult.total_clauses})</span>
                 </button>
               </div>
 
@@ -565,7 +665,8 @@ function DocumentAnalyzer() {
                   {/* Plain Language Summary */}
                   <div className="plain-explanation-card">
                     <div className="explanation-header">
-                      <span>📘 Tenancy Explanation & Legal Protection</span>
+                      <BookOpen size={17} color="#047857" />
+                      <span>Tenancy Explanation & Legal Protection</span>
                     </div>
                     <div className="explanation-body">
                       <p className="explanation-en">{analysisResult.plain_language_summary}</p>
@@ -593,15 +694,24 @@ function DocumentAnalyzer() {
                 </div>
                 <div className="summary-stat-card green">
                   <div className="stat-number">{analysisResult.green_count}</div>
-                  <div className="stat-label">🟢 Safe</div>
+                  <div className="stat-label-icon">
+                    <ShieldCheck size={14} color="#10b981" />
+                    <span>Safe</span>
+                  </div>
                 </div>
                 <div className="summary-stat-card yellow">
                   <div className="stat-number">{analysisResult.yellow_count}</div>
-                  <div className="stat-label">🟡 Caution</div>
+                  <div className="stat-label-icon">
+                    <AlertTriangle size={14} color="#f59e0b" />
+                    <span>Caution</span>
+                  </div>
                 </div>
                 <div className="summary-stat-card red">
                   <div className="stat-number">{analysisResult.red_count}</div>
-                  <div className="stat-label">🔴 High Risk</div>
+                  <div className="stat-label-icon">
+                    <AlertOctagon size={14} color="#ef4444" />
+                    <span>High Risk</span>
+                  </div>
                 </div>
               </div>
 
@@ -617,7 +727,14 @@ function DocumentAnalyzer() {
                       onClick={() => setActiveFilter(f)}
                       aria-pressed={activeFilter === f}
                     >
-                      {f === 'all' ? 'All' : RISK_CONFIG[f].emoji + ' ' + RISK_CONFIG[f].label}
+                      {f === 'all' ? 'All' : (
+                        <>
+                          {f === 'green' && <ShieldCheck size={13} style={{ marginRight: 4 }} />}
+                          {f === 'yellow' && <AlertTriangle size={13} style={{ marginRight: 4 }} />}
+                          {f === 'red' && <AlertOctagon size={13} style={{ marginRight: 4 }} />}
+                          {RISK_CONFIG[f].label}
+                        </>
+                      )}
                       {f !== 'all' && ` (${analysisResult[`${f}_count`]})`}
                     </button>
                   ))}
@@ -642,7 +759,8 @@ function DocumentAnalyzer() {
                         {/* Left panel: original clause */}
                         <div className="clause-original">
                           <div className="clause-panel-label">
-                            📋 Original Clause
+                            <FileText size={13} />
+                            <span>Original Clause</span>
                           </div>
                           <p className="clause-text-original">
                             {truncateClause(clause.text)}
@@ -652,12 +770,16 @@ function DocumentAnalyzer() {
                         {/* Right panel: analysis */}
                         <div className="clause-analysis">
                           <div className="clause-panel-label">
-                            🔍 Risk Analysis
+                            <FileSearch size={13} />
+                            <span>Risk Analysis</span>
                           </div>
 
                           {/* Risk badge */}
                           <span className={`risk-badge ${risk.className}`}>
-                            {risk.emoji} {risk.label}
+                            {risk.className === 'green' && <ShieldCheck size={13} />}
+                            {risk.className === 'yellow' && <AlertTriangle size={13} />}
+                            {risk.className === 'red' && <AlertOctagon size={13} />}
+                            <span>{risk.label}</span>
                           </span>
 
                           {/* Confidence */}

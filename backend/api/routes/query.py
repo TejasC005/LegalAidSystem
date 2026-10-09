@@ -20,7 +20,7 @@ The endpoint is async because the entire LangGraph graph is async.
 
 import logging
 import re
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
@@ -89,9 +89,10 @@ class QueryRequest(BaseModel):
 
 class AgentResultSummary(BaseModel):
     """Summary of one agent's contribution in the response."""
-    intent:  str
-    status:  str
-    preview: str  # First 200 chars of the agent's output
+    intent:   str
+    status:   str
+    preview:  str  # First 200 chars of the agent's output
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class QueryResponse(BaseModel):
@@ -99,19 +100,23 @@ class QueryResponse(BaseModel):
     The structured response from POST /api/v1/query.
 
     Fields:
-      final_response — the compiled, human-readable answer
-      status         — "ok" | "partial" | "unclear" | "error"
-      intents        — which intents were detected and dispatched
-      agents         — per-agent status summaries (for debugging / UI)
-      llm_calls_used — how many LLM calls this request consumed
-      llm_calls_limit— the ceiling that was in effect
+      final_response       — the compiled, human-readable answer
+      status               — "ok" | "partial" | "unclear" | "error"
+      intents              — which intents were detected and dispatched
+      agents               — per-agent status summaries (for debugging / UI)
+      verification_status  — verification badge status (e.g. "verified", "verified_with_scope", "unverified")
+      citations            — list of verified source citations
+      llm_calls_used       — how many LLM calls this request consumed
+      llm_calls_limit      — the ceiling that was in effect
     """
-    final_response:  str
-    status:          str
-    intents:         List[str]
-    agents:          List[AgentResultSummary]
-    llm_calls_used:  int
-    llm_calls_limit: int
+    final_response:      str
+    status:              str
+    intents:             List[str]
+    agents:              List[AgentResultSummary]
+    verification_status: Optional[str] = None
+    citations:           Optional[List[str]] = None
+    llm_calls_used:      int
+    llm_calls_limit:     int
 
 
 # ── Route handler ─────────────────────────────────────────────────────────────
@@ -188,9 +193,28 @@ async def submit_query(
             intent=r["intent"],
             status=r["status"],
             preview=r["output"][:200],
+            metadata=r.get("metadata", {}),
         )
         for r in scratchpad
     ]
+
+    # Extract verification status & citations (prioritizing Rights Explainer)
+    top_verification_status = None
+    all_citations: List[str] = []
+    for r in scratchpad:
+        meta = r.get("metadata", {})
+        if meta.get("citations"):
+            for c in meta["citations"]:
+                if c not in all_citations:
+                    all_citations.append(c)
+        if r.get("intent") == "rights" or meta.get("agent") == "RightsExplainerAgent":
+            if meta.get("verification_status"):
+                top_verification_status = meta["verification_status"]
+        elif not top_verification_status and meta.get("verification_status"):
+            top_verification_status = meta["verification_status"]
+
+    if not top_verification_status and any(r.get("intent") == "rights" for r in scratchpad):
+        top_verification_status = "unverified"
 
     logger.info(
         "Query completed",
@@ -210,6 +234,8 @@ async def submit_query(
             for i in final_state.get("intents", [])
         ],
         agents=agent_summaries,
+        verification_status=top_verification_status,
+        citations=all_citations if all_citations else None,
         llm_calls_used=final_state.get("llm_calls_used", 0),
         llm_calls_limit=calls_limit,
     )
