@@ -79,6 +79,21 @@ class RightsAgent:
         self.qdrant_client = qdrant_client or get_qdrant_client()
         self.embedder = embedder or BGEM3Embedder()
         self.collection_name = collection_name or settings.QDRANT_COLLECTION_NAME
+        self._ensure_collection()
+
+    def _ensure_collection(self) -> None:
+        """Ensures the legal knowledge base collection exists; auto-seeds if missing."""
+        try:
+            collections = self.qdrant_client.get_collections().collections
+            if not any(c.name == self.collection_name for c in collections):
+                logger.info(
+                    "Collection '%s' missing in Qdrant. Auto-seeding starter legal knowledge base...",
+                    self.collection_name,
+                )
+                from services.rag.ingestion import seed_starter_knowledge_base
+                seed_starter_knowledge_base(client=self.qdrant_client, force_recreate=False)
+        except Exception as exc:
+            logger.warning("Could not auto-seed Qdrant collection '%s': %s", self.collection_name, exc)
 
     def retrieve_relevant_chunks(
         self, query: str, top_k: int = 3
@@ -88,6 +103,7 @@ class RightsAgent:
         Returns a list of tuples: (payload_dict, score_float).
         """
         try:
+            self._ensure_collection()
             query_vector = self.embedder.embed_query(query)
 
             # qdrant-client 1.19+ uses query_points(); older versions used search()

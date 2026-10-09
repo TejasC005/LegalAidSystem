@@ -4,40 +4,29 @@
  * LEXIS — Lawyer Dashboard (Module 13: Coming Soon scaffold)
  *
  * WHAT THIS PAGE IS:
- *   This is an intentional, documented coming-soon screen.  It is NOT a bug,
- *   a missing feature, or an incomplete implementation.  It is the correct
+ *   This is an intentional, documented coming-soon screen. It is NOT a bug,
+ *   a missing feature, or an incomplete implementation. It is the correct
  *   output of Module 13, which establishes the lawyer-role permission boundary
  *   without building any lawyer-facing feature logic.
- *
- * WHO CAN SEE THIS PAGE:
- *   Only authenticated users with role="lawyer".
- *   App.jsx wraps this route with <ProtectedRoute allowedRoles={['lawyer']} />.
- *   Any other role (user, admin, anonymous) is redirected to the home dashboard.
- *
- * WHY SCAFFOLD NOW (architectural rationale for academic report):
- *   1.  Closes the permission gap: the lawyer role has been issuable since
- *       Module 2.  Without a route, a lawyer JWT had no defined landing page
- *       — undefined behaviour is a security concern.
- *   2.  Single extension point: when the real lawyer feature is built, this
- *       file is the only thing that changes.  No new routing, no new guards,
- *       no new auth changes needed.
- *   3.  Testable boundary: role-isolation tests can run TODAY and will catch
- *       future regressions.
- *   4.  Honest documentation: README and docs mark this as "scaffolded only".
- *       The code matches the documentation exactly.
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
 import React from 'react';
+import {
+  Scale,
+  Briefcase,
+  UserCheck,
+  Calendar,
+  Clock,
+  Info,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './LawyerDashboard.css';
 
 // ── Coming-soon feature list (static text — NOT functional links) ─────────────
-// These are planned features for a future phase.  None of them are wired to
-// any backend logic.  They are listed here as honest documentation.
 const PLANNED_FEATURES = [
   {
-    icon: '📂',
+    iconType: 'referrals',
     title: 'Case Referrals',
     description:
       'Receive referral requests from citizens whose legal needs exceed self-help tools. ' +
@@ -46,7 +35,7 @@ const PLANNED_FEATURES = [
     id: 'feature-case-referrals',
   },
   {
-    icon: '🪪',
+    iconType: 'verification',
     title: 'Lawyer Verification',
     description:
       'Submit your Bar Council of India registration number and valid practice certificate ' +
@@ -55,7 +44,7 @@ const PLANNED_FEATURES = [
     id: 'feature-lawyer-verification',
   },
   {
-    icon: '📅',
+    iconType: 'booking',
     title: 'Consultation Booking',
     description:
       'Set your available time windows and let citizens book 30-minute consultation slots ' +
@@ -65,18 +54,29 @@ const PLANNED_FEATURES = [
   },
 ];
 
-
-// ── LawyerDashboard component ──────────────────────────────────────────────────
 function LawyerDashboard() {
   const { user } = useAuth();
 
+  const renderFeatureIcon = (type) => {
+    switch (type) {
+      case 'referrals':
+        return <Briefcase size={26} color="#134e42" />;
+      case 'verification':
+        return <UserCheck size={26} color="#134e42" />;
+      case 'booking':
+        return <Calendar size={26} color="#134e42" />;
+      default:
+        return <Scale size={26} color="#134e42" />;
+    }
+  };
+
   return (
     <div className="lawyer-dashboard" id="lawyer-dashboard-page">
-
       {/* ── Hero banner ─────────────────────────────────────────────────── */}
       <div className="lawyer-hero">
         <div className="lawyer-hero__badge" id="lawyer-role-badge">
-          ⚖️  Legal Professional Portal
+          <Scale size={15} />
+          <span>Legal Professional Portal</span>
         </div>
         <h1 className="lawyer-hero__title">
           Lawyer Dashboard
@@ -89,7 +89,9 @@ function LawyerDashboard() {
 
       {/* ── Coming Soon notice ───────────────────────────────────────────── */}
       <div className="lawyer-notice" id="lawyer-coming-soon-notice" role="status" aria-live="polite">
-        <div className="lawyer-notice__icon">🚧</div>
+        <div className="lawyer-notice__icon-wrapper">
+          <Clock size={24} color="#b45309" />
+        </div>
         <div className="lawyer-notice__body">
           <h2 className="lawyer-notice__heading">Coming Soon — Future Phase</h2>
           <p className="lawyer-notice__text">
@@ -118,14 +120,15 @@ function LawyerDashboard() {
               className="lawyer-feature-card"
               aria-label={`Planned feature: ${feature.title}`}
             >
-              <div className="lawyer-feature-card__icon" aria-hidden="true">
-                {feature.icon}
+              <div className="lawyer-feature-card__icon-badge" aria-hidden="true">
+                {renderFeatureIcon(feature.iconType)}
               </div>
               <div className="lawyer-feature-card__body">
                 <h3 className="lawyer-feature-card__title">{feature.title}</h3>
                 <p className="lawyer-feature-card__description">{feature.description}</p>
                 <span className="lawyer-feature-card__phase-badge">
-                  🗓 {feature.phase}
+                  <Calendar size={13} />
+                  <span>{feature.phase}</span>
                 </span>
               </div>
             </article>
@@ -136,18 +139,16 @@ function LawyerDashboard() {
       {/* ── Scope boundary note ──────────────────────────────────────────── */}
       <footer className="lawyer-scope-note" id="lawyer-scope-note">
         <div className="lawyer-scope-note__inner">
-          <span className="lawyer-scope-note__icon">ℹ️</span>
+          <Info size={18} color="#134e42" style={{ flexShrink: 0, marginTop: 2 }} />
           <p className="lawyer-scope-note__text">
             <strong>Architectural note:</strong> This scaffold exists to lock the
             role-permission boundary in code before the feature set is built.
             It prevents accidental privilege leak (lawyer JWTs cannot reach admin or
             citizen routes), provides a single extension point for the next phase,
             and makes role-isolation unit tests runnable today.
-            See Module 13 in the project README for full rationale.
           </p>
         </div>
       </footer>
-
     </div>
   );
 }

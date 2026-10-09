@@ -10,14 +10,25 @@
  *      Suspended users cannot log in.
  *   3. Moderation Queue: Surfaces Confirmation Agent failures where max retries
  *      were reached and an honest fallback was presented to the citizen.
- *
- * HONEST DATA PRINCIPLE:
- *   No placeholder/fake analytics numbers. If no reflection logs exist yet,
- *   honest zero states and explicit empty-state notices are displayed.
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
 import React, { useState, useEffect } from 'react';
+import {
+  BarChart3,
+  Users,
+  ShieldCheck,
+  ShieldAlert,
+  RefreshCw,
+  AlertTriangle,
+  Loader2,
+  CheckCircle2,
+  Cpu,
+  TrendingUp,
+  UserX,
+  Ban,
+  Sliders,
+} from 'lucide-react';
 import {
   getAdminAnalyticsOverview,
   getAdminAgentAnalytics,
@@ -105,7 +116,7 @@ export default function AdminDashboard() {
     return (
       <div className="admin-container">
         <div className="admin-empty-state">
-          <div className="admin-empty-icon">⏳</div>
+          <Loader2 size={38} className="spinning-icon" />
           <div className="admin-empty-title">Loading Admin Dashboard</div>
           <div className="admin-empty-desc">Aggregating real reflection logs and user data...</div>
         </div>
@@ -116,12 +127,13 @@ export default function AdminDashboard() {
   if (error) {
     return (
       <div className="admin-container">
-        <div className="admin-empty-state" style={{ borderColor: '#f43f5e' }}>
-          <div className="admin-empty-icon">🚨</div>
-          <div className="admin-empty-title" style={{ color: '#f43f5e' }}>Access Denied or Error</div>
+        <div className="admin-empty-state" style={{ borderColor: '#fca5a5' }}>
+          <AlertTriangle size={38} color="#ef4444" />
+          <div className="admin-empty-title" style={{ color: '#dc2626' }}>Access Denied or Error</div>
           <div className="admin-empty-desc">{error}</div>
           <button className="admin-refresh-btn" onClick={loadDashboardData} style={{ marginTop: '1rem' }}>
-            🔄 Retry
+            <RefreshCw size={14} />
+            <span>Retry</span>
           </button>
         </div>
       </div>
@@ -132,18 +144,26 @@ export default function AdminDashboard() {
     <div className="admin-container">
       {/* Header Banner */}
       <div className="admin-header">
-        <div>
+        <div className="admin-header-left">
           <div className="admin-header-title">
-            <h1>Platform Admin Dashboard</h1>
-            <span className="admin-badge">Module 12</span>
-          </div>
-          <div className="admin-header-sub">
-            Real-time reflection analytics, user access control, and self-correction moderation queue.
+            <div className="admin-icon-wrapper">
+              <Sliders size={26} color="#ffffff" />
+            </div>
+            <div>
+              <h1>Platform Admin Dashboard</h1>
+              <div className="admin-header-sub">
+                Real-time reflection analytics, user access control, and self-correction moderation queue.
+              </div>
+            </div>
           </div>
         </div>
-        <button className="admin-refresh-btn" onClick={loadDashboardData} disabled={isLoading}>
-          🔄 Refresh Data
-        </button>
+        <div className="admin-header-right">
+          <span className="admin-badge">Module 12</span>
+          <button className="admin-refresh-btn" onClick={loadDashboardData} disabled={isLoading}>
+            <RefreshCw size={14} className={isLoading ? 'spinning-icon' : ''} />
+            <span>Refresh Data</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs Bar */}
@@ -152,19 +172,22 @@ export default function AdminDashboard() {
           className={`admin-tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
           onClick={() => setActiveTab('analytics')}
         >
-          📊 Usage Analytics ({overview?.total_sessions_logged || 0})
+          <BarChart3 size={15} />
+          <span>Usage Analytics ({overview?.total_sessions_logged || 0})</span>
         </button>
         <button
           className={`admin-tab-btn ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
         >
-          👥 User Management ({users.length})
+          <Users size={15} />
+          <span>User Management ({users.length})</span>
         </button>
         <button
           className={`admin-tab-btn ${activeTab === 'moderation' ? 'active' : ''}`}
           onClick={() => setActiveTab('moderation')}
         >
-          🛡️ Moderation Queue ({moderationQueue.length})
+          <ShieldAlert size={15} />
+          <span>Moderation Queue ({moderationQueue.length})</span>
         </button>
       </div>
 
@@ -173,35 +196,35 @@ export default function AdminDashboard() {
         <>
           {/* Top KPI Cards */}
           <div className="admin-kpi-grid">
-            <div className="admin-kpi-card">
+            <div className="admin-kpi-card total">
               <span className="admin-kpi-label">Total Sessions</span>
               <span className="admin-kpi-value">{overview?.total_sessions_logged || 0}</span>
               <span className="admin-kpi-sub">Logged in reflection store</span>
             </div>
             <div className="admin-kpi-card pass">
               <span className="admin-kpi-label">Confirmation Pass Rate</span>
-              <span className="admin-kpi-value" style={{ color: '#10b981' }}>
+              <span className="admin-kpi-value green">
                 {overview?.pass_rate_percentage || 0}%
               </span>
               <span className="admin-kpi-sub">Passed validation on 1st try</span>
             </div>
             <div className="admin-kpi-card fail">
               <span className="admin-kpi-label">Fallback Rate</span>
-              <span className="admin-kpi-value" style={{ color: '#f43f5e' }}>
+              <span className="admin-kpi-value red">
                 {overview?.fallback_rate_percentage || 0}%
               </span>
               <span className="admin-kpi-sub">Exhausted max retries (3)</span>
             </div>
             <div className="admin-kpi-card retry">
               <span className="admin-kpi-label">Total Retries Executed</span>
-              <span className="admin-kpi-value" style={{ color: '#f59e0b' }}>
+              <span className="admin-kpi-value amber">
                 {overview?.total_retries || 0}
               </span>
               <span className="admin-kpi-sub">Self-correction loops</span>
             </div>
             <div className="admin-kpi-card contradiction">
               <span className="admin-kpi-label">Contradictions Caught</span>
-              <span className="admin-kpi-value" style={{ color: '#a855f7' }}>
+              <span className="admin-kpi-value purple">
                 {overview?.total_contradictions || 0}
               </span>
               <span className="admin-kpi-sub">Rule C1: Legal Act mismatches</span>
@@ -211,12 +234,13 @@ export default function AdminDashboard() {
           {/* Per-Agent Breakdown Section */}
           <div className="admin-section">
             <div className="admin-section-title">
-              <span>🤖 Per-Agent Self-Correction Metrics (All 6 Agents)</span>
+              <Cpu size={18} color="#134e42" />
+              <span>Per-Agent Self-Correction Metrics (All 6 Agents)</span>
             </div>
 
             {overview?.total_sessions_logged === 0 ? (
               <div className="admin-empty-state">
-                <div className="admin-empty-icon">📈</div>
+                <TrendingUp size={36} color="#10b981" />
                 <div className="admin-empty-title">No Evaluation Logs Recorded Yet</div>
                 <div className="admin-empty-desc">
                   Metrics are pulled live from real MongoDB reflection logs. As citizens send queries to
@@ -258,12 +282,13 @@ export default function AdminDashboard() {
       {activeTab === 'users' && (
         <div className="admin-section">
           <div className="admin-section-title">
-            <span>👥 Registered User Accounts & Access Control</span>
+            <Users size={18} color="#134e42" />
+            <span>Registered User Accounts & Access Control</span>
           </div>
 
           {users.length === 0 ? (
             <div className="admin-empty-state">
-              <div className="admin-empty-icon">👤</div>
+              <UserX size={36} color="#94a3b8" />
               <div className="admin-empty-title">No Registered Users Found</div>
               <div className="admin-empty-desc">No accounts have logged in via OTP yet.</div>
             </div>
@@ -283,17 +308,17 @@ export default function AdminDashboard() {
                 <tbody>
                   {users.map((u) => (
                     <tr key={u.id}>
-                      <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#94a3b8' }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#64748b' }}>
                         {u.id}
                       </td>
-                      <td style={{ fontWeight: 600, color: '#f8fafc' }}>{u.phone}</td>
+                      <td style={{ fontWeight: 600, color: '#0f172a' }}>{u.phone}</td>
                       <td>
                         <span
                           className="admin-badge"
                           style={{
-                            background: u.role === 'admin' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.05)',
-                            color: u.role === 'admin' ? '#38bdf8' : '#94a3b8',
-                            borderColor: u.role === 'admin' ? 'rgba(56, 189, 248, 0.3)' : 'transparent',
+                            background: u.role === 'admin' ? '#ecfdf5' : '#f8fafc',
+                            color: u.role === 'admin' ? '#065f46' : '#475569',
+                            borderColor: u.role === 'admin' ? '#a7f3d0' : '#cbd5e1',
                           }}
                         >
                           {u.role}
@@ -301,9 +326,13 @@ export default function AdminDashboard() {
                       </td>
                       <td>
                         {u.is_active ? (
-                          <span className="status-badge active">● Active</span>
+                          <span className="status-badge active">
+                            <CheckCircle2 size={12} /> Active
+                          </span>
                         ) : (
-                          <span className="status-badge suspended">⛔ Suspended</span>
+                          <span className="status-badge suspended">
+                            <Ban size={12} /> Suspended
+                          </span>
                         )}
                       </td>
                       <td style={{ fontSize: '0.8rem', color: '#64748b' }}>
@@ -341,16 +370,17 @@ export default function AdminDashboard() {
       {activeTab === 'moderation' && (
         <div className="admin-section">
           <div className="admin-section-title">
-            <span>🛡️ Moderation Queue — Surfacing Confirmation Failures</span>
+            <ShieldAlert size={18} color="#134e42" />
+            <span>Moderation Queue — Surfacing Confirmation Failures</span>
           </div>
 
-          <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.75rem' }}>
             Surfaces session logs where the Confirmation Agent exhausted max retries (3 attempts) and presented an honest fallback notice to the citizen.
           </div>
 
           {moderationQueue.length === 0 ? (
             <div className="admin-empty-state">
-              <div className="admin-empty-icon">✅</div>
+              <CheckCircle2 size={38} color="#10b981" />
               <div className="admin-empty-title">Moderation Queue Clean</div>
               <div className="admin-empty-desc">
                 No repeated Confirmation Agent rejections recorded. All agent outputs have either passed validation or met standard response criteria.
@@ -373,7 +403,7 @@ export default function AdminDashboard() {
                     <span><strong>Agents Checked:</strong> {item.agents_checked.join(', ')}</span>
                     <span><strong>Retries Used:</strong> {item.retry_count} / 3</span>
                     {item.contradiction_caught && (
-                      <span style={{ color: '#a855f7' }}>
+                      <span style={{ color: '#9333ea' }}>
                         <strong>Contradiction:</strong> {item.contradiction_caught}
                       </span>
                     )}

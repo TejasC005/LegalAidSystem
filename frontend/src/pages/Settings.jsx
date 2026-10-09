@@ -7,6 +7,18 @@
 
 import React, { useState, useEffect } from 'react';
 import {
+  Settings as SettingsIcon,
+  User,
+  Mail,
+  Database,
+  AlertTriangle,
+  Trash2,
+  Upload,
+  Download,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
+import {
   getUserProfile,
   updateUserProfile,
   sendEmailOtp,
@@ -173,26 +185,37 @@ function Settings() {
   return (
     <div className="settings-page">
       <div className="settings-header">
-        <h2>⚙️ Settings & Profile</h2>
-        <p>Manage your account, notification preferences, email, and privacy options.</p>
+        <div className="settings-header-icon-wrap">
+          <SettingsIcon size={24} className="settings-header-icon" />
+        </div>
+        <div>
+          <h2>Settings &amp; Profile</h2>
+          <p>Manage your account, notification preferences, email, and privacy options.</p>
+        </div>
       </div>
 
-      {msg && <div className="login-hint" style={{ color: '#4ade80', marginBottom: '1rem' }}>{msg}</div>}
-      {error && <div className="login-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {msg && <div className="login-hint" style={{ color: '#059669', marginBottom: '1rem', background: '#ecfdf5', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #a7f3d0' }}>✓ {msg}</div>}
+      {error && <div className="login-error" style={{ marginBottom: '1rem', background: '#fef2f2', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fecaca', color: '#b91c1c' }}>{error}</div>}
 
       {/* ── Section 1: Profile Details ── */}
       <section className="settings-section">
-        <h3>👤 Profile Details</h3>
+        <h3>
+          <User size={20} className="section-title-icon" />
+          <span>Profile Details</span>
+        </h3>
         <form onSubmit={handleSaveProfile} className="settings-form">
           <div className="picture-upload-box">
             {picUrl ? (
               <img src={picUrl} alt="Avatar" className="avatar-preview" />
             ) : (
-              <div className="avatar-preview">👤</div>
+              <div className="avatar-preview">
+                <User size={36} />
+              </div>
             )}
             <div>
-              <label htmlFor="picFile" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-block' }}>
-                Upload New Picture
+              <label htmlFor="picFile" className="btn btn-secondary upload-btn">
+                <Upload size={16} />
+                <span>Upload New Picture</span>
               </label>
               <input
                 id="picFile"
@@ -202,7 +225,7 @@ function Settings() {
                 style={{ display: 'none' }}
                 disabled={loading}
               />
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>JPEG, PNG, WEBP max 2MB</p>
+              <p className="upload-hint">JPEG, PNG, WEBP max 2MB</p>
             </div>
           </div>
 
@@ -211,6 +234,7 @@ function Settings() {
             <input
               id="fullName"
               type="text"
+              placeholder="Enter your full name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               disabled={loading}
@@ -222,6 +246,7 @@ function Settings() {
             <textarea
               id="address"
               rows="2"
+              placeholder="Enter your residential address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               disabled={loading}
@@ -263,7 +288,7 @@ function Settings() {
             >
               <option value="sms">SMS Only</option>
               <option value="email">Email Only</option>
-              <option value="both">Both SMS & Email</option>
+              <option value="both">Both SMS &amp; Email</option>
             </select>
           </div>
 
@@ -276,14 +301,21 @@ function Settings() {
       {/* ── Section 2: Email Address & Verification ── */}
       <section className="settings-section">
         <h3>
-          ✉️ Email Address & Verification
+          <Mail size={20} className="section-title-icon" />
+          <span>Email Address &amp; Verification</span>
           {emailVerified ? (
-            <span className="status-badge verified">Verified</span>
+            <span className="status-badge verified">
+              <CheckCircle2 size={13} />
+              <span>Verified</span>
+            </span>
           ) : (
-            <span className="status-badge unverified">Unverified</span>
+            <span className="status-badge unverified">
+              <AlertCircle size={13} />
+              <span>Unverified</span>
+            </span>
           )}
         </h3>
-        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+        <p className="section-desc">
           {emailVerified
             ? 'Your email address is verified and active for authentication and deadline reminders.'
             : 'Verify your email address to receive one-time sign-in codes and legal deadline alerts.'}
@@ -333,23 +365,31 @@ function Settings() {
 
       {/* ── Section 3: Data Export & Privacy ── */}
       <section className="settings-section">
-        <h3>📦 Data & Privacy</h3>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>
+        <h3>
+          <Database size={20} className="section-title-icon" />
+          <span>Data &amp; Privacy</span>
+        </h3>
+        <p className="section-desc">
           Download a full JSON dump of your profile and vault metadata.
         </p>
         <button type="button" className="btn btn-secondary" onClick={handleExport}>
-          📥 Export Account Data (JSON)
+          <Download size={16} />
+          <span>Export Account Data (JSON)</span>
         </button>
       </section>
 
       {/* ── Section 4: Danger Zone ── */}
       <section className="settings-section danger-zone">
-        <h3>⚠️ Danger Zone</h3>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>
+        <h3>
+          <AlertTriangle size={20} className="section-title-icon" />
+          <span>Danger Zone</span>
+        </h3>
+        <p className="section-desc">
           Permanently delete your user record, vault documents, and deadlines. No soft delete.
         </p>
         <button type="button" className="btn-danger" onClick={handleDeleteAccount} disabled={loading}>
-          🗑️ Delete Account & All Data
+          <Trash2 size={16} />
+          <span>Delete Account &amp; All Data</span>
         </button>
       </section>
     </div>

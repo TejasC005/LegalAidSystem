@@ -13,16 +13,22 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Scale,
+  FileEdit,
+  FileSearch,
+  ShieldAlert,
+  ClipboardList,
+  FolderLock
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
 // ── Feature cards data ─────────────────────────────────────────────────────
-// Same 6 features as the sidebar nav links.
-// `module` is the module number that will build the real UI.
 const FEATURES = [
   {
     path:    '/rights-explainer',
-    icon:    '⚖️',
+    icon:    Scale,
     title:   'Rights Explainer',
     desc:    'Understand your legal rights as an Indian citizen in plain language.',
     module:  5,
@@ -30,43 +36,43 @@ const FEATURES = [
   },
   {
     path:    '/document-drafter',
-    icon:    '📄',
+    icon:    FileEdit,
     title:   'Document Drafter',
     desc:    'Generate legal document drafts — RTI applications, affidavits, notices.',
     module:  6,
-    color:   '#1a4a6b',
+    color:   '#1a6b5a',
   },
   {
     path:    '/document-analyzer',
-    icon:    '🔍',
+    icon:    FileSearch,
     title:   'Document Analyzer',
     desc:    'Upload a contract or document to get a risk and clause analysis.',
     module:  7,
-    color:   '#6b1a5a',
+    color:   '#1a6b5a',
   },
   {
     path:    '/scam-detection',
-    icon:    '🚨',
+    icon:    ShieldAlert,
     title:   'Scam Detection',
     desc:    'Identify common legal scams and fraudulent schemes targeting citizens.',
     module:  8,
-    color:   '#8b3a0a',
+    color:   '#1a6b5a',
   },
   {
     path:    '/filing-guide',
-    icon:    '📋',
+    icon:    ClipboardList,
     title:   'Filing Guide',
     desc:    'Find the right authority to file a complaint with — step by step.',
     module:  9,
-    color:   '#1a6b35',
+    color:   '#1a6b5a',
   },
   {
     path:    '/vault-deadlines',
-    icon:    '🔐',
+    icon:    FolderLock,
     title:   'Vault & Deadlines',
     desc:    'Securely store important documents and receive deadline reminders.',
     module:  10,
-    color:   '#4a1a6b',
+    color:   '#1a6b5a',
   },
 ];
 
@@ -105,21 +111,26 @@ function Home() {
         </h2>
 
         <div className="home-feature-grid">
-          {FEATURES.map((feature) => (
-            <Link
-              key={feature.path}
-              to={feature.path}
-              className="home-feature-card card"
-              style={{ '--card-accent': feature.color }}   /* Custom CSS variable per card */
-            >
-              <span className="home-feature-card__icon">{feature.icon}</span>
-              <div className="home-feature-card__body">
-                <h3 className="home-feature-card__title">{feature.title}</h3>
-                <p className="home-feature-card__desc">{feature.desc}</p>
-              </div>
-              <span className="home-feature-card__module">Module {feature.module}</span>
-            </Link>
-          ))}
+          {FEATURES.map((feature) => {
+            const IconComponent = feature.icon;
+            return (
+              <Link
+                key={feature.path}
+                to={feature.path}
+                className="home-feature-card card"
+                style={{ '--card-accent': feature.color }}
+              >
+                <div className="home-feature-card__icon-wrap">
+                  <IconComponent className="home-feature-card__icon" size={24} strokeWidth={2} />
+                </div>
+                <div className="home-feature-card__body">
+                  <h3 className="home-feature-card__title">{feature.title}</h3>
+                  <p className="home-feature-card__desc">{feature.desc}</p>
+                </div>
+                <span className="home-feature-card__module">Module {feature.module}</span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
