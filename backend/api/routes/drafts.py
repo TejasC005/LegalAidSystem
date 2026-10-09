@@ -16,7 +16,7 @@ PER-USER ACCESS CONTROL (REQUIREMENT 7):
 
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response
@@ -136,8 +136,8 @@ async def start_draft_session(
         "doc_type": body.doc_type,
         "collected_answers": collected_answers,
         "status": "in_progress",
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
 
     await db.draft_sessions.insert_one(session_doc)
@@ -228,7 +228,7 @@ async def submit_draft_answer(
             "title": f"{template_info['name']} — {updated_answers.get('city', 'Draft')}",
             "collected_answers": updated_answers,
             "document_text": assembled_doc,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "status": "completed"
         }
         await db.user_drafts.insert_one(permanent_draft)
@@ -236,7 +236,7 @@ async def submit_draft_answer(
         # Update session status
         await db.draft_sessions.update_one(
             {"session_id": session_id, "user_id": user_id},
-            {"$set": {"status": "completed", "collected_answers": updated_answers, "updated_at": datetime.utcnow().isoformat()}}
+            {"$set": {"status": "completed", "collected_answers": updated_answers, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
 
         return DraftSessionResponse(
@@ -258,7 +258,7 @@ async def submit_draft_answer(
 
         await db.draft_sessions.update_one(
             {"session_id": session_id, "user_id": user_id},
-            {"$set": {"collected_answers": updated_answers, "updated_at": datetime.utcnow().isoformat()}}
+            {"$set": {"collected_answers": updated_answers, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
 
         return DraftSessionResponse(

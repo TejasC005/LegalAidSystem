@@ -19,7 +19,7 @@ are implemented based on statutory provisions. Fields requiring state-specific c
 (e.g., RTI fee amounts which vary by state) are explicitly marked with `[PLACEHOLDER — verify state rules]`.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, TypedDict, Callable
 
 
 # =============================================================================
@@ -251,8 +251,21 @@ def assemble_consumer_complaint(answers: Dict[str, Any]) -> str:
     return "\n\n".join(sections)
 
 
+class TemplateQuestion(TypedDict):
+    key: str
+    question: str
+    type: str
+
+
+class TemplateConfig(TypedDict):
+    name: str
+    description: str
+    assembler: Callable[[Dict[str, Any]], str]
+    questions: List[TemplateQuestion]
+
+
 # Registry of templates
-TEMPLATES = {
+TEMPLATES: Dict[str, TemplateConfig] = {
     "rti_application": {
         "name": "RTI Application",
         "description": "Application under Section 6(1) of Right to Information Act, 2005",

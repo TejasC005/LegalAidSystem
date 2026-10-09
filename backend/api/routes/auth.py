@@ -15,6 +15,7 @@ All auth endpoints live under /api/v1/auth/
 import logging
 import uuid
 from datetime import datetime
+from typing import Dict, Any
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -141,7 +142,7 @@ async def verify_otp_endpoint(body: VerifyOTPRequest, request: Request):
     if existing:
         user_id = str(existing["_id"])
         role = existing.get("role", UserRole.USER.value)
-        update_fields = {"updated_at": now}
+        update_fields: Dict[str, Any] = {"updated_at": now}
         if body.email:
             update_fields["email"] = body.email.lower().strip()
             update_fields["email_verified"] = True

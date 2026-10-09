@@ -14,7 +14,7 @@ Why separate "UserDocument" from "UserOut"?
   This pattern prevents accidentally leaking internal data in API responses.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List, Any, Dict
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
@@ -89,8 +89,8 @@ class UserDocument(BaseModel):
     is_anonymous: bool = False
     is_active: bool = True
     profile: Optional[ProfileDocument] = Field(default_factory=ProfileDocument)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = {"populate_by_name": True}
 

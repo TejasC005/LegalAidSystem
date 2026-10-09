@@ -24,6 +24,7 @@ langchain-core>=0.3.0
 # ── Auth ──────────────────────────────────────────────────────────────────────
 firebase-admin==6.5.0
 python-jose[cryptography]==3.3.0
+types-python-jose>=3.3.0
 email-validator>=2.1.0
 
 # ── Vector DB & Embeddings (RAG — Module 5) ─────────────────────────────────
