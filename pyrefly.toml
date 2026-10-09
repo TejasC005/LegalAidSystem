@@ -1,0 +1,6 @@
+# Pyrefly Static Analysis Configuration
+python-interpreter-path = "backend/venv/Scripts/python.exe"
+search-path = [
+  "backend",
+  "backend/venv/Lib/site-packages"
+]
