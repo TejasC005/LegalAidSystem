@@ -12,10 +12,13 @@ QUESTIONS = [
 ]
 
 
+from agents.rights_agent.agent import get_rights_agent
+
 def main():
     settings = get_settings()
-    client = get_qdrant_client()
-    embedder = BGEM3Embedder()
+    agent = get_rights_agent()
+    client = agent.qdrant_client
+    embedder = agent.embedder
 
     print("\n" + "=" * 80)
     print("LEXIS RIGHTS AGENT - RETRIEVAL TEST")

@@ -62,6 +62,7 @@ not to add any facts beyond what the record contains.
 
 import json
 import logging
+import re
 import time
 from typing import Dict, Any, Optional, Tuple
 
@@ -184,16 +185,16 @@ class FilingGuideAgent:
         defaults to legal_notice (the most general document type).
         """
         q = query.lower()
-        if any(kw in q for kw in ["rti", "right to information", "public information officer", "pio"]):
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in ["rti", "right to information", "public information officer", "pio"]):
             return "rti_application"
-        if any(kw in q for kw in [
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in [
             "consumer", "consumer complaint", "defective product", "service deficiency",
             "consumer forum", "district forum", "ncdrc", "consumer court"
         ]):
             return "consumer_complaint"
-        if any(kw in q for kw in [
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in [
             "legal notice", "demand notice", "landlord", "rent", "deposit",
-            "notice", "contract breach"
+            "contract breach"
         ]):
             return "legal_notice"
         return None
@@ -338,10 +339,11 @@ class FilingGuideAgent:
             for k, v in fee.items():
                 if k == "source" or not v:
                     continue
+                label = k.replace("_", " ").title()
                 if isinstance(v, list):
-                    output_lines.append(f"  - {k}: {', '.join(str(i) for i in v)}")
+                    output_lines.append(f"  - {label}: {', '.join(str(i) for i in v)}")
                 else:
-                    output_lines.append(f"  - {k}: {v}")
+                    output_lines.append(f"  - {label}: {v}")
             output_lines.append("")
 
         # Documents

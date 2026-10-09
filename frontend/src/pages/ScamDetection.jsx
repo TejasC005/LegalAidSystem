@@ -17,46 +17,63 @@
  */
 
 import React, { useState } from 'react';
+import {
+  ShieldAlert,
+  ShieldCheck,
+  AlertTriangle,
+  Search,
+  RotateCcw,
+  Lock,
+  PhoneCall,
+  Globe,
+  Scale,
+  Landmark,
+  CheckCircle2,
+  Package,
+  Smartphone,
+  HelpCircle,
+  BookOpen,
+  Info
+} from 'lucide-react';
 import { checkScam } from '../services/api';
 import './ScamDetection.css';
 
-// ── Quick-example prompts (not suggestions — real representative scenarios) ─
+// ── Quick-example prompts (real representative scenarios) ───────────────────
 const EXAMPLE_PROMPTS = [
-  { icon: '📵', text: 'A person called claiming I am under "digital arrest" by CBI' },
-  { icon: '📦', text: 'A courier company said my package was seized with drugs and demanded Rs 15,000' },
-  { icon: '📱', text: 'Someone told me to scan a QR code to receive ₹5,000 on PhonePe' },
-  { icon: '🔒', text: 'I got a message saying my Aadhaar is suspended and KYC must be updated' },
-  { icon: '💰', text: 'An "investment app" on Telegram promised 35% monthly returns on crypto trading' },
-  { icon: '🏦', text: 'A caller said my bank account is frozen under PMLA and I must transfer money to a "safe account"' },
+  { icon: PhoneCall, text: 'A person called claiming I am under "digital arrest" by CBI' },
+  { icon: Package, text: 'A courier company said my package was seized with drugs and demanded Rs 15,000' },
+  { icon: Smartphone, text: 'Someone told me to scan a QR code to receive ₹5,000 on PhonePe' },
+  { icon: Lock, text: 'I got a message saying my Aadhaar is suspended and KYC must be updated' },
+  { icon: Scale, text: 'An "investment app" on Telegram promised 35% monthly returns on crypto trading' },
+  { icon: Landmark, text: 'A caller said my bank account is frozen under PMLA and I must transfer money to a "safe account"' },
 ];
 
 // ── Severity colour mapping ────────────────────────────────────────────────
 function getSeverityLabel(severity) {
-  const map = { CRITICAL: '🔴 Critical', HIGH: '🟠 High', MEDIUM: '🔵 Medium' };
+  const map = { CRITICAL: 'Critical Threat', HIGH: 'High Risk', MEDIUM: 'Caution / Medium' };
   return map[severity] || severity;
 }
 
 // ── Match method label ─────────────────────────────────────────────────────
 function getMatchLabel(method) {
-  const map = { keyword: '⚡ Keyword match', semantic: '🔍 Semantic match', none: '—' };
+  const map = { keyword: 'Keyword Match', semantic: 'Semantic RAG Match', none: '—' };
   return map[method] || method;
 }
 
 // ── Parse recommended_action into numbered steps ──────────────────────────
 function parseSteps(text) {
   if (!text) return [];
-  // Handles "1. Step\n2. Step" or "1) Step\n2) Step" or plain line breaks
   const lines = text.split('\n').filter(l => l.trim());
   return lines.map(l => l.replace(/^\d+[\.\)]\s*/, '').trim()).filter(Boolean);
 }
 
 // ── Channel icon helper ───────────────────────────────────────────────────
-function channelIcon(channel) {
-  if (channel.toLowerCase().includes('cybercrime') || channel.toLowerCase().includes('gov')) return '🌐';
-  if (channel.toLowerCase().includes('1930')) return '📞';
-  if (channel.toLowerCase().includes('police') || channel.toLowerCase().includes('fir')) return '👮';
-  if (channel.toLowerCase().includes('helpline')) return '📞';
-  return '📋';
+function renderChannelIcon(channel) {
+  const c = channel.toLowerCase();
+  if (c.includes('cybercrime') || c.includes('gov')) return <Globe size={16} />;
+  if (c.includes('1930') || c.includes('helpline')) return <PhoneCall size={16} />;
+  if (c.includes('police') || c.includes('fir')) return <Scale size={16} />;
+  return <Landmark size={16} />;
 }
 
 // =============================================================================
@@ -116,20 +133,22 @@ function ScamDetection() {
       return (
         <div className="scam-no-match">
           <div className="scam-no-match-header">
-            <div className="scam-no-match-icon">❓</div>
+            <div className="scam-no-match-icon">
+              <HelpCircle size={24} />
+            </div>
             <div>
-              <h3>Pattern Not Recognised</h3>
-              <p>No known scam pattern matched your description.</p>
+              <h3>Pattern Not Recognised in Database</h3>
+              <p>No verified scam pattern strictly matched your description.</p>
             </div>
           </div>
           <div className="scam-no-match-body">
             {alert.safe_fallback_message}
           </div>
           <div className="scam-no-match-emergency">
-            <span>🚨</span>
+            <PhoneCall size={20} className="emergency-icon" />
             <p>
               If you are in immediate danger or have already lost money,
-              call <strong>1930</strong> (National Cyber Helpline) right now.
+              call <strong>1930</strong> (National Cybercrime Helpline) immediately.
             </p>
           </div>
         </div>
@@ -143,7 +162,9 @@ function ScamDetection() {
         {/* Header */}
         <div className="scam-alert-header">
           <div className="scam-alert-header-left">
-            <div className="scam-alert-icon-box" aria-hidden="true">🚨</div>
+            <div className="scam-alert-icon-box" aria-hidden="true">
+              <ShieldAlert size={26} />
+            </div>
             <div>
               <h2 className="scam-alert-name">{alert.pattern_name}</h2>
               <div className="scam-alert-meta">
@@ -156,7 +177,7 @@ function ScamDetection() {
           </div>
           <div className="scam-alert-header-right">
             <span className="scam-trace-id" title="Traceability ID — links to the source database record">
-              ID: {alert.db_id}
+              DB ID: {alert.db_id}
             </span>
             {alert.match_method === 'semantic' && (
               <span className="scam-confidence">
@@ -172,7 +193,8 @@ function ScamDetection() {
           {/* What this scam is */}
           <div className="scam-section">
             <div className="scam-section-label">
-              <span>📖</span> What this scam is
+              <BookOpen size={16} />
+              <span>Modus Operandi (How It Works)</span>
             </div>
             <p className="scam-section-content">{alert.description}</p>
           </div>
@@ -180,7 +202,8 @@ function ScamDetection() {
           {/* Legal Reality — highlighted box */}
           <div className="scam-section legal">
             <div className="scam-section-label">
-              <span>⚖️</span> Legal Reality
+              <Scale size={16} />
+              <span>Verified Legal Reality</span>
             </div>
             <p className="scam-section-content">{alert.legal_reality}</p>
           </div>
@@ -188,7 +211,8 @@ function ScamDetection() {
           {/* Recommended Action */}
           <div className="scam-section">
             <div className="scam-section-label">
-              <span>✅</span> What you should do right now
+              <CheckCircle2 size={16} />
+              <span>Immediate Protective Steps</span>
             </div>
             {steps.length > 0 ? (
               <ol className="scam-steps">
@@ -208,25 +232,26 @@ function ScamDetection() {
           {alert.reporting_channels && alert.reporting_channels.length > 0 && (
             <div className="scam-section">
               <div className="scam-section-label">
-                <span>📢</span> Report to
+                <PhoneCall size={16} />
+                <span>Official Reporting Portals</span>
               </div>
               <div className="scam-channels">
                 {alert.reporting_channels.map((ch, i) => (
                   <div key={i} className="scam-channel">
-                    <span className="scam-channel-icon">{channelIcon(ch)}</span>
-                    {ch}
+                    <span className="scam-channel-icon">{renderChannelIcon(ch)}</span>
+                    <span>{ch}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Source reference — transparency */}
+          {/* Source reference */}
           {alert.source_ref && (
             <div className="scam-source-ref">
-              <span>📚</span>
+              <Info size={14} />
               <span>
-                <strong>Legal reference:</strong> {alert.source_ref}
+                <strong>Official reference:</strong> {alert.source_ref}
               </span>
             </div>
           )}
@@ -246,7 +271,8 @@ function ScamDetection() {
       <header className="scam-hero">
         <div className="scam-hero-inner">
           <div className="scam-hero-badge">
-            <span>🛡️</span> Module 8 — Active
+            <ShieldCheck size={14} />
+            <span>Module 8 · Active Detection</span>
           </div>
           <h1>Scam Detection <span>Engine</span></h1>
           <p className="scam-hero-sub">
@@ -276,7 +302,7 @@ function ScamDetection() {
 
         {/* Input card */}
         <div className="scam-input-card">
-          <h2>Describe the situation</h2>
+          <h2>Describe the suspicious incident</h2>
           <p>
             Include details: who called, what they claimed, what they asked for,
             any app or link they mentioned. The more detail, the better the match.
@@ -296,24 +322,17 @@ function ScamDetection() {
           </div>
           <div className="scam-actions">
             <div className="scam-hint">
-              <span>🔒</span>
-              Your description is not stored or shared.
+              <Lock size={14} />
+              <span>Your description is processed securely and not stored permanently.</span>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               {result && (
                 <button
                   onClick={handleReset}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #2a2d35',
-                    color: '#9aa0a6',
-                    borderRadius: '10px',
-                    padding: '0.7rem 1.2rem',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                  }}
+                  className="btn-reset-scam"
                 >
-                  ↺ Reset
+                  <RotateCcw size={14} />
+                  <span>Reset</span>
                 </button>
               )}
               <button
@@ -325,10 +344,13 @@ function ScamDetection() {
                 {loading ? (
                   <>
                     <span className="scam-btn-spinner" />
-                    Analysing…
+                    <span>Analysing…</span>
                   </>
                 ) : (
-                  <>🔍 Check for Scam</>
+                  <>
+                    <Search size={16} />
+                    <span>Check for Scam</span>
+                  </>
                 )}
               </button>
             </div>
@@ -338,10 +360,12 @@ function ScamDetection() {
         {/* Analysing state */}
         {loading && (
           <div className="scam-analyzing">
-            <div className="scam-analyzing-pulse">🔍</div>
+            <div className="scam-analyzing-pulse">
+              <Search size={24} className="animate-pulse" />
+            </div>
             <p>
-              <strong>Running detection pipeline…</strong><br />
-              Checking keyword signals → semantic search → database lookup
+              <strong>Running verified detection pipeline…</strong><br />
+              Checking keyword signals → semantic Qdrant matching → database verification
             </p>
           </div>
         )}
@@ -349,7 +373,7 @@ function ScamDetection() {
         {/* Error state */}
         {error && !loading && (
           <div className="scam-error">
-            <span className="scam-error-icon">⚠️</span>
+            <AlertTriangle size={20} className="scam-error-icon" />
             <div className="scam-error-text">
               <h4>Detection failed</h4>
               <p>{error}</p>
@@ -365,18 +389,23 @@ function ScamDetection() {
           <div className="scam-examples">
             <h3>Example situations to try</h3>
             <div className="scam-examples-grid">
-              {EXAMPLE_PROMPTS.map((ex, i) => (
-                <button
-                  key={i}
-                  id={`scam-example-${i}`}
-                  className="scam-example-chip"
-                  onClick={() => handleExample(ex.text)}
-                  title="Click to use this example"
-                >
-                  <span className="scam-example-chip-icon">{ex.icon}</span>
-                  {ex.text}
-                </button>
-              ))}
+              {EXAMPLE_PROMPTS.map((ex, i) => {
+                const PromptIcon = ex.icon;
+                return (
+                  <button
+                    key={i}
+                    id={`scam-example-${i}`}
+                    className="scam-example-chip"
+                    onClick={() => handleExample(ex.text)}
+                    title="Click to use this example"
+                  >
+                    <span className="scam-example-chip-icon">
+                      <PromptIcon size={16} />
+                    </span>
+                    <span>{ex.text}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

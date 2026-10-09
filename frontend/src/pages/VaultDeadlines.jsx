@@ -9,13 +9,29 @@
  *   - Date extraction with confidence badges (amber = needs review)
  *   - Date confirmation modal before creating a deadline
  *   - Document list with download / delete
- *   - Deadline cards with T-minus countdown badges (🔴🟠🟡)
+ *   - Deadline cards with T-minus countdown badges
  *   - Proactive draft preview panel per deadline
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  FolderLock,
+  Lock,
+  UploadCloud,
+  Calendar,
+  FileText,
+  Image as ImageIcon,
+  File,
+  Download,
+  Trash2,
+  Clock,
+  FileEdit,
+  AlertTriangle,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import './VaultDeadlines.css';
 
 /* ── API helpers ──────────────────────────────────────────────────────────── */
@@ -50,10 +66,10 @@ function fileSizeLabel(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getDocIcon(ct) {
-  if (ct === 'application/pdf') return '📄';
-  if (ct?.startsWith('image/')) return '🖼️';
-  return '📁';
+function renderDocIcon(ct) {
+  if (ct === 'application/pdf') return <FileText size={20} className="doc-icon-svg pdf" />;
+  if (ct?.startsWith('image/')) return <ImageIcon size={20} className="doc-icon-svg img" />;
+  return <File size={20} className="doc-icon-svg generic" />;
 }
 
 function urgencyClass(u) {
@@ -63,7 +79,7 @@ function urgencyClass(u) {
 function confidenceTier(c) {
   if (c >= 0.85) return { label: `${Math.round(c * 100)}% confident`, cls: 'high' };
   if (c >= 0.70) return { label: `${Math.round(c * 100)}% confident`, cls: 'medium' };
-  return { label: `${Math.round(c * 100)}% — VERIFY`, cls: 'low' };
+  return { label: `${Math.round(c * 100)}% — Verify`, cls: 'low' };
 }
 
 /* ── Date Confirmation Modal ──────────────────────────────────────────────── */
@@ -87,16 +103,19 @@ function DateConfirmModal({ doc, onConfirm, onClose }) {
   return (
     <div className="dates-modal-overlay" role="dialog" aria-modal="true">
       <div className="dates-modal">
-        <h3>🗓 Review Extracted Dates</h3>
+        <h3>
+          <Calendar size={22} className="modal-title-icon" />
+          <span>Review Extracted Dates</span>
+        </h3>
         <p className="modal-desc">
           LEXIS extracted the following dates from your document.
-          Dates in <span style={{ color: '#fbbf24' }}>amber</span> have lower confidence
+          Dates in <span style={{ color: '#d97706', fontWeight: 600 }}>amber</span> have lower confidence
           — please verify them against your original document before creating a deadline.
           You can edit any date directly.
         </p>
 
         {edits.length === 0 && (
-          <p style={{ color: '#94a3b8', textAlign: 'center', padding: '1rem 0' }}>
+          <p style={{ color: '#64748b', textAlign: 'center', padding: '1rem 0' }}>
             No dates were extracted from this document.
             You can add deadlines manually from the Deadlines panel later.
           </p>
@@ -122,7 +141,10 @@ function DateConfirmModal({ doc, onConfirm, onClose }) {
                 <p className="date-snippet">From document: "{d.raw_snippet}"</p>
               )}
               {d.needs_confirmation && (
-                <p className="warn-label">⚠ Please verify this date against your document before confirming.</p>
+                <p className="warn-label">
+                  <AlertTriangle size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                  Please verify this date against your document before confirming.
+                </p>
               )}
             </div>
           );
@@ -136,7 +158,7 @@ function DateConfirmModal({ doc, onConfirm, onClose }) {
             disabled={edits.filter(d => d.date_str).length === 0}
             id="confirm-dates-btn"
           >
-            ✓ Confirm &amp; Create Deadlines
+            Confirm &amp; Create Deadlines
           </button>
         </div>
       </div>
@@ -144,49 +166,66 @@ function DateConfirmModal({ doc, onConfirm, onClose }) {
   );
 }
 
-/* ── Main Page ───────────────────────────────────────────────────────────── */
-export default function VaultDeadlines() {
+/* ── Main Component ───────────────────────────────────────────────────────── */
+function VaultDeadlines() {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
-
-  const [user] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('user') || '{}'); }
-    catch { return {}; }
-  });
-
-  const isAnonymous = !user?.uid && !user?.sub && !localStorage.getItem('access_token');
-
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [docs, setDocs] = useState([]);
   const [deadlines, setDeadlines] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState(null); // {type, msg}
+  const [uploadStatus, setUploadStatus] = useState(null);
   const [dragOver, setDragOver] = useState(false);
-  const [pendingDoc, setPendingDoc] = useState(null); // doc with extracted_dates to confirm
+  const [pendingDoc, setPendingDoc] = useState(null);
   const [selectedDeadline, setSelectedDeadline] = useState(null);
   const [draftText, setDraftText] = useState('');
   const [loadingDraft, setLoadingDraft] = useState(false);
 
-  /* ── Load data ── */
+  const fileInputRef = useRef(null);
+
+  /* ── Check role & load data on mount ── */
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('lexis_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.role === 'anonymous') {
+          setIsAnonymous(true);
+          return;
+        }
+      }
+    } catch { /* ignore */ }
+
+    loadData();
+  }, []);
+
   async function loadData() {
     try {
-      const [docsRes, dlRes] = await Promise.all([
+      const [dRes, dlRes] = await Promise.all([
         apiFetch('/vault/documents'),
         apiFetch('/vault/deadlines'),
       ]);
-      setDocs(docsRes.documents || []);
+      setDocs(dRes.documents || []);
       setDeadlines(dlRes.deadlines || []);
     } catch (e) {
-      if (e.status === 403) { /* anonymous handled below */ }
+      if (e.status === 401) {
+        setIsAnonymous(true);
+      }
     }
   }
 
-  useEffect(() => {
-    if (!isAnonymous) loadData();
-  }, [isAnonymous]);
-
-  /* ── Upload handler ── */
+  /* ── Upload ── */
   async function handleUpload(file) {
     if (!file) return;
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      setUploadStatus({ type: 'error', msg: 'Only PDF, JPEG, and PNG files are allowed.' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadStatus({ type: 'error', msg: 'File exceeds the 10 MB limit.' });
+      return;
+    }
+
     setUploading(true);
     setUploadStatus({ type: 'uploading', msg: `Encrypting & analysing "${file.name}"…` });
     try {
@@ -245,7 +284,6 @@ export default function VaultDeadlines() {
 
   /* ── Download ── */
   function handleDownload(fileId) {
-    const token = localStorage.getItem('access_token');
     const url = `${BASE}/vault/documents/${fileId}/download`;
     const a = document.createElement('a');
     a.href = url;
@@ -280,14 +318,18 @@ export default function VaultDeadlines() {
     return (
       <div className="vault-page">
         <div className="vault-header">
-          <span className="vault-header-icon">🔐</span>
+          <div className="vault-header-icon-wrap">
+            <FolderLock size={26} />
+          </div>
           <div>
             <h1>Vault &amp; Deadlines</h1>
             <p className="vault-subtitle">Encrypted personal document storage with proactive deadline reminders</p>
           </div>
         </div>
         <div className="vault-anon-block">
-          <div className="anon-icon">🔒</div>
+          <div className="anon-icon">
+            <Lock size={36} />
+          </div>
           <h2>Account Required</h2>
           <p>
             The Vault encrypts your documents (Aadhaar, passports, lease agreements) with
@@ -296,7 +338,7 @@ export default function VaultDeadlines() {
             is tied to your identity, not an anonymous session.
           </p>
           <button className="btn-signin" id="vault-signin-btn" onClick={() => navigate('/login')}>
-            Sign in with Phone (OTP) →
+            Sign in with Email OTP →
           </button>
         </div>
       </div>
@@ -307,7 +349,9 @@ export default function VaultDeadlines() {
   return (
     <div className="vault-page">
       <div className="vault-header">
-        <span className="vault-header-icon">🔐</span>
+        <div className="vault-header-icon-wrap">
+          <FolderLock size={26} />
+        </div>
         <div>
           <h1>Vault &amp; Deadlines</h1>
           <p className="vault-subtitle">
@@ -321,7 +365,10 @@ export default function VaultDeadlines() {
         <div>
           {/* Upload zone */}
           <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
-            <h2>📤 Upload Document</h2>
+            <h2>
+              <UploadCloud size={20} className="panel-title-icon" />
+              <span>Upload Document</span>
+            </h2>
             <div
               className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
               onClick={() => fileInputRef.current?.click()}
@@ -334,7 +381,9 @@ export default function VaultDeadlines() {
               onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
               id="vault-upload-zone"
             >
-              <div className="upload-icon">🗂</div>
+              <div className="upload-icon">
+                <UploadCloud size={32} />
+              </div>
               <p><strong>Click or drag &amp; drop</strong> to upload</p>
               <p>LEXIS will extract deadlines automatically</p>
               <p className="upload-filetypes">PDF · JPEG · PNG — max 10 MB</p>
@@ -359,19 +408,22 @@ export default function VaultDeadlines() {
 
           {/* Document list */}
           <div className="glass-panel">
-            <h2>🗄 Your Documents <span style={{ color: '#64748b', fontWeight: 400 }}>({docs.length})</span></h2>
+            <h2>
+              <FileText size={20} className="panel-title-icon" />
+              <span>Your Documents <span style={{ color: '#64748b', fontWeight: 500, fontSize: '0.9rem' }}>({docs.length})</span></span>
+            </h2>
             {docs.length === 0 ? (
               <div className="empty-state"><p>No documents stored yet. Upload one above.</p></div>
             ) : (
               <div className="doc-list">
                 {docs.map(doc => (
                   <div key={doc.file_id} className="doc-card">
-                    <span className="doc-icon">{getDocIcon(doc.content_type)}</span>
+                    <span className="doc-icon">{renderDocIcon(doc.content_type)}</span>
                     <div className="doc-info">
                       <div className="doc-name" title={doc.original_name}>{doc.original_name}</div>
                       <div className="doc-meta">
                         {fileSizeLabel(doc.size_bytes)} · {formatDate(doc.created_at)}
-                        &nbsp;<span className="doc-enc-badge">🔒 Encrypted</span>
+                        &nbsp;<span className="doc-enc-badge"><Lock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />Encrypted</span>
                       </div>
                     </div>
                     <div className="doc-actions">
@@ -380,13 +432,17 @@ export default function VaultDeadlines() {
                         onClick={() => handleDownload(doc.file_id)}
                         title="Download (decrypted)"
                         id={`download-doc-${doc.file_id}`}
-                      >↓</button>
+                      >
+                        <Download size={15} />
+                      </button>
                       <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(doc.file_id, doc.original_name)}
                         title="Permanently delete"
                         id={`delete-doc-${doc.file_id}`}
-                      >🗑</button>
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -398,8 +454,11 @@ export default function VaultDeadlines() {
         {/* ── Deadlines + Draft ── */}
         <div>
           <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
-            <h2>⏰ Upcoming Deadlines <span style={{ color: '#64748b', fontWeight: 400 }}>({deadlines.length})</span></h2>
-            <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '-0.75rem', marginBottom: '1rem' }}>
+            <h2>
+              <Clock size={20} className="panel-title-icon" />
+              <span>Upcoming Deadlines <span style={{ color: '#64748b', fontWeight: 500, fontSize: '0.9rem' }}>({deadlines.length})</span></span>
+            </h2>
+            <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '-0.5rem', marginBottom: '1.25rem' }}>
               Reminders fire at T-30, T-15, T-3 days · Includes proactive draft letter
             </p>
             {deadlines.length === 0 ? (
@@ -409,8 +468,8 @@ export default function VaultDeadlines() {
                 {deadlines.map(dl => (
                   <div key={dl.deadline_id} className={`deadline-card ${urgencyClass(dl.urgency)}`}>
                     <span className={`urgency-badge ${dl.urgency}`}>
-                      {dl.urgency === 'critical' ? '🔴' : dl.urgency === 'high' ? '🟠' : dl.urgency === 'medium' ? '🟡' : '🟢'}
-                      {' '}{dl.days_remaining != null ? `${dl.days_remaining}d` : '—'}
+                      <Clock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                      {dl.days_remaining != null ? `${dl.days_remaining}d left` : '—'}
                     </span>
                     <div className="deadline-info">
                       <div className="deadline-label">{dl.label}</div>
@@ -424,7 +483,9 @@ export default function VaultDeadlines() {
                       onClick={() => handleViewDraft(dl)}
                       id={`view-draft-${dl.deadline_id}`}
                       title="View proactive draft"
-                    >📝</button>
+                    >
+                      <FileEdit size={16} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -434,15 +495,18 @@ export default function VaultDeadlines() {
           {/* Draft preview */}
           {selectedDeadline && (
             <div className="glass-panel">
-              <h2>📝 Proactive Draft — {selectedDeadline.label}</h2>
-              <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '-0.75rem', marginBottom: '1rem' }}>
+              <h2>
+                <FileEdit size={20} className="panel-title-icon" />
+                <span>Proactive Draft — {selectedDeadline.label}</span>
+              </h2>
+              <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '-0.5rem', marginBottom: '1.25rem' }}>
                 Auto-generated by LEXIS at reminder time. Review, fill in placeholders, and submit.
               </p>
               {loadingDraft ? (
                 <div style={{ textAlign: 'center', padding: '2rem' }}><span className="spinner" /></div>
               ) : (
                 <div className="draft-preview">
-                  <h4>✦ Draft Document</h4>
+                  <h4>✦ Auto-Drafted Legal Notice</h4>
                   <pre className="draft-text">{draftText}</pre>
                 </div>
               )}
@@ -462,3 +526,5 @@ export default function VaultDeadlines() {
     </div>
   );
 }
+
+export default VaultDeadlines;
