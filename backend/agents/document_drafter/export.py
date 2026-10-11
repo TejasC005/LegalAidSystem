@@ -17,8 +17,9 @@ from typing import Tuple
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Flowable
 from docx import Document
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def generate_pdf_bytes(doc_title: str, doc_text: str) -> bytes:
         spaceAfter=10,
     )
 
-    story = []
+    story: list[Flowable] = []
 
     # Title
     story.append(Paragraph(doc_title, title_style))
@@ -92,7 +93,7 @@ def generate_docx_bytes(doc_title: str, doc_text: str) -> bytes:
     
     # Title
     title_para = doc.add_heading(doc_title, level=1)
-    title_para.alignment = 1  # Center
+    title_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
     # Body
     lines = doc_text.split('\n')

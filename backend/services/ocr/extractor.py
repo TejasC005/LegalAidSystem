@@ -115,7 +115,8 @@ def _extract_from_pdf(file_bytes: bytes) -> str:
     extracted_pages = []
     for page_num, page in enumerate(doc):
         # Try digital text first (fast path)
-        text = page.get_text("text").strip()
+        raw_text = page.get_text("text")
+        text = raw_text.strip() if isinstance(raw_text, str) else str(raw_text).strip()
 
         if text:
             extracted_pages.append(text)
@@ -236,8 +237,12 @@ def _run_tesseract(image_bytes: bytes) -> str:
 
     try:
         image = Image.open(io.BytesIO(image_bytes))
-        text = pytesseract.image_to_string(image, lang="eng")
-        return text.strip()
+        raw_text = pytesseract.image_to_string(image, lang="eng")
+        if isinstance(raw_text, str):
+            return raw_text.strip()
+        if isinstance(raw_text, dict):
+            return str(raw_text.get("text", "")).strip()
+        return str(raw_text).strip()
     except Exception as exc:
         logger.warning("Tesseract OCR error: %s", exc)
         return ""
@@ -317,10 +322,12 @@ def _run_gemini_vision(image_bytes: bytes, mime_type: str = "image/jpeg") -> str
         try:
             import base64
             from openai import OpenAI
+            from openai.types.chat import ChatCompletion
             b64_img = base64.b64encode(image_bytes).decode("utf-8")
             oai_client = OpenAI(api_key=openai_key)
             completion = oai_client.chat.completions.create(
                 model=settings.OPENAI_MODEL_DEV or "gpt-4o-mini",
+                stream=False,
                 messages=[
                     {
                         "role": "user",
@@ -339,7 +346,12 @@ def _run_gemini_vision(image_bytes: bytes, mime_type: str = "image/jpeg") -> str
                     }
                 ]
             )
-            oai_text = (completion.choices[0].message.content or "").strip()
+            if isinstance(completion, ChatCompletion) and completion.choices:
+                oai_text = (completion.choices[0].message.content or "").strip()
+            elif hasattr(completion, "choices") and getattr(completion, "choices"):
+                oai_text = (getattr(completion, "choices")[0].message.content or "").strip()
+            else:
+                oai_text = ""
             if oai_text:
                 logger.info("OpenAI Vision OCR fallback succeeded (%d chars)", len(oai_text))
                 return oai_text

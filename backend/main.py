@@ -129,19 +129,36 @@ async def lifespan(app: FastAPI):
     scheduler = start_scheduler(app)
     app.state.scheduler = scheduler
 
-    # 6. Ensure legal knowledge base is seeded in Qdrant (server or in-memory fallback)
+    # 6. Ensure legal knowledge base & scam patterns are seeded in Qdrant (server or in-memory fallback) and MongoDB
     try:
         from db.qdrant_client import get_qdrant_client
         from services.rag.ingestion import seed_starter_knowledge_base
+        from services.scam.ingestion import seed_scam_knowledge_base, seed_scam_patterns_mongo
         from agents.rights_agent.agent import get_rights_agent
+        from agents.scam_detection.agent import get_scam_agent
 
         q_client = get_qdrant_client()
         count = seed_starter_knowledge_base(client=q_client, force_recreate=False)
+        scam_count = seed_scam_knowledge_base(qdrant_client=q_client, force_recreate=False)
+
+        # Seed MongoDB scam patterns collection
+        mongo_db = mongo_client[settings.MONGODB_DB_NAME]
+        await seed_scam_patterns_mongo(mongo_db)
+
         r_agent = get_rights_agent()
         r_agent.qdrant_client = q_client
-        logger.info("Qdrant knowledge base initialized/seeded successfully with %d chunks.", count)
+
+        s_agent = get_scam_agent(mongo_db=mongo_db, qdrant_client=q_client)
+        s_agent.qdrant_client = q_client
+        s_agent.mongo_db = mongo_db
+
+        logger.info(
+            "Qdrant knowledge bases initialized (rights=%d chunks, scams=%d patterns). Scam agent wired.",
+            count,
+            scam_count,
+        )
     except Exception as exc:
-        logger.warning("Could not seed Qdrant knowledge base at startup: %s", exc)
+        logger.warning("Could not seed Qdrant/Mongo knowledge bases at startup: %s", exc)
 
     # 7. Validate Brevo REST API Email Service configuration
     is_brevo_valid, missing_brevo_fields = settings.validate_brevo_config()

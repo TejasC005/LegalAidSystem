@@ -137,10 +137,35 @@ class ScamDetectionAgent:
         self._pattern_cache: Dict[str, Dict] = {}
         self._keyword_map: List[Tuple[str, str]] = []  # (compiled_pattern_str, pattern_id)
         self._load_pattern_cache()
+        self._ensure_qdrant_seeded()
 
     # =========================================================================
     # Startup helpers
     # =========================================================================
+
+    def _ensure_qdrant_seeded(self) -> None:
+        """
+        Self-healing check: ensures the `scam_patterns` collection is initialized
+        and seeded in self.qdrant_client. If missing or unseeded, seeds it automatically.
+        """
+        try:
+            if self.qdrant_client is None:
+                return
+            collections = [c.name for c in self.qdrant_client.get_collections().collections]
+            if SCAM_COLLECTION_NAME not in collections:
+                from services.scam.ingestion import seed_scam_knowledge_base
+                logger.info("ScamDetectionAgent: Collection '%s' missing. Auto-seeding now...", SCAM_COLLECTION_NAME)
+                seed_scam_knowledge_base(
+                    qdrant_client=self.qdrant_client,
+                    force_recreate=False,
+                    test_mode=getattr(self.embedder, "test_mode", False),
+                )
+        except Exception as exc:
+            logger.warning(
+                "ScamDetectionAgent: Could not auto-seed Qdrant collection '%s': %s",
+                SCAM_COLLECTION_NAME,
+                exc,
+            )
 
     def _load_pattern_cache(self) -> None:
         """
@@ -165,8 +190,17 @@ class ScamDetectionAgent:
                 pid = p["id"]
                 self._pattern_cache[pid] = p
                 for kw in p.get("keywords", []):
-                    # Build regex: word-boundary aware, case insensitive
-                    self._keyword_map.append((re.escape(kw), pid))
+                    kw_clean = kw.strip()
+                    if not kw_clean:
+                        continue
+                    tokens = [re.escape(w) for w in kw_clean.split() if w.strip()]
+                    if len(tokens) == 1:
+                        # Single word: word-boundary match
+                        pattern_str = r'\b' + tokens[0] + r'\b'
+                    else:
+                        # Multi-word: allow 0 to 2 intervening filler words (e.g. "scan a qr code", "bank account is frozen")
+                        pattern_str = r'\b' + r'(?:\s+\w+){0,2}\s+'.join(tokens) + r'\b'
+                    self._keyword_map.append((pattern_str, pid))
 
             logger.info(
                 "ScamDetectionAgent: Loaded %d patterns (%d keywords) into cache.",
@@ -210,6 +244,7 @@ class ScamDetectionAgent:
         Returns a list of (pattern_id, score) tuples, sorted by descending score.
         """
         try:
+            self._ensure_qdrant_seeded()
             query_vector = self.embedder.embed_query(query)
 
             if hasattr(self.qdrant_client, "query_points"):
@@ -419,14 +454,18 @@ class ScamDetectionAgent:
 _scam_agent_instance: Optional[ScamDetectionAgent] = None
 
 
-def get_scam_agent(mongo_db=None) -> ScamDetectionAgent:
+def get_scam_agent(mongo_db=None, qdrant_client=None) -> ScamDetectionAgent:
     """Returns singleton instance of ScamDetectionAgent."""
     global _scam_agent_instance
     if _scam_agent_instance is None:
-        _scam_agent_instance = ScamDetectionAgent(mongo_db=mongo_db)
-    elif mongo_db is not None and _scam_agent_instance.mongo_db is None:
-        # Upgrade singleton with mongo_db reference once app is ready
-        _scam_agent_instance.mongo_db = mongo_db
+        _scam_agent_instance = ScamDetectionAgent(mongo_db=mongo_db, qdrant_client=qdrant_client)
+    else:
+        if mongo_db is not None and _scam_agent_instance.mongo_db is None:
+            # Upgrade singleton with mongo_db reference once app is ready
+            _scam_agent_instance.mongo_db = mongo_db
+        if qdrant_client is not None and _scam_agent_instance.qdrant_client != qdrant_client:
+            _scam_agent_instance.qdrant_client = qdrant_client
+            _scam_agent_instance._ensure_qdrant_seeded()
     return _scam_agent_instance
 
 

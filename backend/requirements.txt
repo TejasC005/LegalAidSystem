@@ -33,6 +33,7 @@ fastembed>=0.8.0
 
 # ── Document Generation (Module 6) ───────────────────────────────────────────
 reportlab>=4.0.0
+types-reportlab>=5.0.0
 python-docx>=1.0.0
 
 # ── OCR & File Analysis (Module 7) ───────────────────────────────────────────
