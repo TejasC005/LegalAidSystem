@@ -10,6 +10,7 @@ env/
 backend/logs/*.log
 vault_storage/
 backend/vault_storage/
+backend/data/knowledge_base/uploads/
 
 # --- Env files ---
 .env
