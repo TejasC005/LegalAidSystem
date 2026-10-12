@@ -223,3 +223,8 @@ class UserExportResponse(BaseModel):
     profile: Optional[ProfileDocument] = None
     vault_documents: List[Dict[str, Any]] = Field(default_factory=list)
     vault_deadlines: List[Dict[str, Any]] = Field(default_factory=list)
+
+# Admin login request model for POST /auth/admin-login
+class AdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1, max_length=256)

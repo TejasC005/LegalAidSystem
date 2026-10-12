@@ -44,19 +44,20 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
 
 // ── Pages ──────────────────────────────────────────────────────────────────
-import Login            from './pages/Login';
-import Home             from './pages/Home';
-import RightsExplainer  from './pages/RightsExplainer';
-import DocumentDrafter  from './pages/DocumentDrafter';
+import Login from './pages/Login';
+import Home from './pages/Home';
+import RightsExplainer from './pages/RightsExplainer';
+import DocumentDrafter from './pages/DocumentDrafter';
 import DocumentAnalyzer from './pages/DocumentAnalyzer';
-import ScamDetection    from './pages/ScamDetection';
-import FilingGuide      from './pages/FilingGuide';
-import VaultDeadlines   from './pages/VaultDeadlines';
-import AdminDashboard   from './pages/AdminDashboard';
+import ScamDetection from './pages/ScamDetection';
+import FilingGuide from './pages/FilingGuide';
+import VaultDeadlines from './pages/VaultDeadlines';
+import AdminDashboard from './pages/AdminDashboard';
 import LawyerDashboard from './pages/LawyerDashboard';  // Module 13 scaffold
-import ProfileSetup    from './pages/ProfileSetup';     // Module 13B
-import Settings        from './pages/Settings';         // Module 13B
-
+import ProfileSetup from './pages/ProfileSetup';     // Module 13B
+import Settings from './pages/Settings';         // Module 13B
+import AdminLogin from './pages/AdminLogin';
+import AdminLayout from './components/layout/AdminLayout';
 
 function App() {
   return (
@@ -76,24 +77,28 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Home />} />                                    {/* / */}
-          <Route path="rights-explainer"  element={<RightsExplainer />} />    {/* /rights-explainer */}
-          <Route path="document-drafter"  element={<DocumentDrafter />} />    {/* /document-drafter */}
+          <Route path="rights-explainer" element={<RightsExplainer />} />    {/* /rights-explainer */}
+          <Route path="document-drafter" element={<DocumentDrafter />} />    {/* /document-drafter */}
           <Route path="document-analyzer" element={<DocumentAnalyzer />} />   {/* /document-analyzer */}
-          <Route path="scam-detection"    element={<ScamDetection />} />      {/* /scam-detection */}
-          <Route path="filing-guide"      element={<FilingGuide />} />        {/* /filing-guide */}
-          <Route path="vault-deadlines"   element={<VaultDeadlines />} />     {/* /vault-deadlines */}
-          <Route path="profile-setup"     element={<ProfileSetup />} />        {/* /profile-setup */}
-          <Route path="settings"          element={<Settings />} />            {/* /settings */}
+          <Route path="scam-detection" element={<ScamDetection />} />      {/* /scam-detection */}
+          <Route path="filing-guide" element={<FilingGuide />} />        {/* /filing-guide */}
+          <Route path="vault-deadlines" element={<VaultDeadlines />} />     {/* /vault-deadlines */}
+          <Route path="profile-setup" element={<ProfileSetup />} />        {/* /profile-setup */}
+          <Route path="settings" element={<Settings />} />            {/* /settings */}
         </Route>
       </Route>
 
-      {/* ── Admin-only protected route (allowedRoles=['admin']) ──────── */}
+      ```jsx
+      {/* Admin-only protected route */}
       <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-        <Route element={<AppLayout />}>
-          <Route path="admin" element={<AdminDashboard />} />                 {/* /admin */}
+        <Route element={<AdminLayout />}>
+          <Route path="admin" element={<AdminDashboard />} />
         </Route>
       </Route>
 
+      {/* Public admin login */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      ```
       {/* ── Lawyer-only protected route (allowedRoles=['lawyer']) ──────── */}
       {/*
         Module 13 scaffold: lawyer role has its own isolated route.
