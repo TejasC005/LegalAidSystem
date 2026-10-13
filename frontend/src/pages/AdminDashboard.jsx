@@ -21,11 +21,19 @@ import {
   getModerationQueue,
   suspendUser,
   reactivateUser,
+  uploadKnowledgeBaseDocument,
+  getKnowledgeBaseDocuments,
+  getKnowledgeBaseDocument,
+  activateKnowledgeBaseDocument,
+  deactivateKnowledgeBaseDocument,
+  deleteKnowledgeBaseDocument,
+  reprocessKnowledgeBaseDocument,
 } from '../services/api';
 import './AdminDashboard.css';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: '◫' },
+  { id: 'knowledge', label: 'Legal Knowledge Base', icon: '⚖' },
   { id: 'agents', label: 'Agent Analytics', icon: '◇' },
   { id: 'users', label: 'User Management', icon: '♙' },
   { id: 'moderation', label: 'Moderation Queue', icon: '⚑' },
@@ -76,6 +84,24 @@ export default function AdminDashboard() {
   const [agents, setAgents] = useState([]);
   const [users, setUsers] = useState([]);
   const [moderation, setModeration] = useState([]);
+  const [kbDocs, setKbDocs] = useState([]);
+  const [selectedKbDoc, setSelectedKbDoc] = useState(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [uploadingKb, setUploadingKb] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [busyDocId, setBusyDocId] = useState('');
+
+  // Upload form state
+  const [kbFile, setKbFile] = useState(null);
+  const [kbTitle, setKbTitle] = useState('');
+  const [kbActName, setKbActName] = useState('');
+  const [kbTopic, setKbTopic] = useState('');
+  const [kbJurisdiction, setKbJurisdiction] = useState('India');
+  const [kbAuthority, setKbAuthority] = useState('');
+  const [kbVersion, setKbVersion] = useState('1.0');
+  const [kbEffectiveDate, setKbEffectiveDate] = useState('');
+  const [kbAutoActivate, setKbAutoActivate] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -91,6 +117,7 @@ export default function AdminDashboard() {
         getAdminAgentAnalytics(),
         getAdminUsers(0, 50),
         getModerationQueue(50),
+        getKnowledgeBaseDocuments(),
       ]);
 
       const labels = [
@@ -98,6 +125,7 @@ export default function AdminDashboard() {
         'Agent analytics',
         'User list',
         'Moderation queue',
+        'Legal Knowledge Base',
       ];
 
       const failures = [];
@@ -120,6 +148,7 @@ export default function AdminDashboard() {
         if (index === 1) setAgents(Array.isArray(data) ? data : []);
         if (index === 2) setUsers(Array.isArray(data) ? data : []);
         if (index === 3) setModeration(Array.isArray(data) ? data : []);
+        if (index === 4) setKbDocs(Array.isArray(data) ? data : []);
       });
 
       if (failures.length) {
@@ -173,6 +202,143 @@ export default function AdminDashboard() {
       );
     } finally {
       setBusyUser('');
+    }
+  };
+
+  const handleKbFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setKbFile(file);
+      const cleanStem = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim();
+      const titleFormatted = cleanStem.charAt(0).toUpperCase() + cleanStem.slice(1);
+      if (!kbTitle) setKbTitle(titleFormatted);
+      if (!kbActName) setKbActName(titleFormatted);
+      if (!kbTopic) setKbTopic('Citizen Rights');
+    }
+  };
+
+  const handleUploadKb = async (e) => {
+    e.preventDefault();
+    if (!kbFile) {
+      setError('Please select a file to upload (.pdf, .docx, or .json).');
+      return;
+    }
+    setUploadingKb(true);
+    setUploadProgress(0);
+    setError('');
+    setNotice('');
+
+    const formData = new FormData();
+    formData.append('file', kbFile);
+    if (kbTitle) formData.append('title', kbTitle);
+    if (kbActName) formData.append('act_name', kbActName);
+    if (kbTopic) formData.append('topic', kbTopic);
+    if (kbJurisdiction) formData.append('jurisdiction', kbJurisdiction);
+    if (kbAuthority) formData.append('authority', kbAuthority);
+    if (kbVersion) formData.append('version', kbVersion);
+    if (kbEffectiveDate) formData.append('effective_date', kbEffectiveDate);
+    formData.append('auto_activate', kbAutoActivate ? 'true' : 'false');
+
+    try {
+      const res = await uploadKnowledgeBaseDocument(formData, (progressEvent) => {
+        if (progressEvent.total) {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percent);
+        }
+      });
+      setNotice(`Document "${res.data.title}" successfully uploaded and indexed with ${res.data.chunk_count} chunks.`);
+      setKbFile(null);
+      setKbTitle('');
+      setKbActName('');
+      setKbTopic('');
+      setKbAuthority('');
+      setKbEffectiveDate('');
+      setKbVersion('1.0');
+      const fileInput = document.getElementById('kb-file-input');
+      if (fileInput) fileInput.value = '';
+      await loadDashboard();
+    } catch (err) {
+      setError(
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Failed to upload legal document.'
+      );
+    } finally {
+      setUploadingKb(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleToggleDocStatus = async (doc) => {
+    const isActivating = !doc.is_active;
+    const actionLabel = isActivating ? 'activate' : 'deactivate';
+    setBusyDocId(doc.document_id);
+    setError('');
+    setNotice('');
+
+    try {
+      if (isActivating) {
+        await activateKnowledgeBaseDocument(doc.document_id);
+        setNotice(`Document "${doc.title}" activated and vectors indexed in Qdrant.`);
+      } else {
+        await deactivateKnowledgeBaseDocument(doc.document_id);
+        setNotice(`Document "${doc.title}" deactivated. Vectors removed from Qdrant retrieval.`);
+      }
+      await loadDashboard();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || `Failed to ${actionLabel} document.`);
+    } finally {
+      setBusyDocId('');
+    }
+  };
+
+  const handleDeleteDoc = async (doc) => {
+    const confirmed = window.confirm(`Permanently delete document "${doc.title}" and remove all vectors from Qdrant?`);
+    if (!confirmed) return;
+    setBusyDocId(doc.document_id);
+    setError('');
+    setNotice('');
+
+    try {
+      await deleteKnowledgeBaseDocument(doc.document_id);
+      setNotice(`Document "${doc.title}" and its vectors permanently deleted.`);
+      if (selectedKbDoc?.document_id === doc.document_id) {
+        setSelectedKbDoc(null);
+      }
+      await loadDashboard();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || 'Failed to delete document.');
+    } finally {
+      setBusyDocId('');
+    }
+  };
+
+  const handleReprocessDoc = async (doc) => {
+    setBusyDocId(doc.document_id);
+    setError('');
+    setNotice('');
+
+    try {
+      const res = await reprocessKnowledgeBaseDocument(doc.document_id);
+      setNotice(`Document "${doc.title}" reprocessed successfully (${res.data.chunk_count} chunks indexed).`);
+      await loadDashboard();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || 'Failed to reprocess document.');
+    } finally {
+      setBusyDocId('');
+    }
+  };
+
+  const handleInspectDoc = async (docId) => {
+    setInspectLoading(true);
+    setError('');
+    try {
+      const res = await getKnowledgeBaseDocument(docId);
+      setSelectedKbDoc(res.data);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || 'Could not load document details.');
+    } finally {
+      setInspectLoading(false);
     }
   };
 
@@ -563,6 +729,378 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </section>
+              )}
+
+              {section === 'knowledge' && (
+                <>
+                  <div className="admin-section-heading">
+                    <div>
+                      <h2>Official Legal Knowledge Base</h2>
+                      <p>
+                        Upload and manage authoritative legal documents (PDF, Word DOCX, JSON)
+                        indexed into Qdrant for RAG-grounded retrieval by the Rights Agent.
+                      </p>
+                    </div>
+                    <span className="admin-data-label">{kbDocs.length} LEGAL SOURCES</span>
+                  </div>
+
+                  {/* Upload Card */}
+                  <section className="admin-panel kb-upload-panel">
+                    <div className="admin-panel-heading">
+                      <div>
+                        <h3>Upload New Legal Document</h3>
+                        <p>Text is extracted, chunked with section citations, embedded via BGE-M3, and indexed into Qdrant.</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleUploadKb} className="kb-upload-form">
+                      {/* File Selection Zone */}
+                      <div className="kb-file-dropzone">
+                        <input
+                          id="kb-file-input"
+                          type="file"
+                          accept=".pdf,.docx,.json"
+                          onChange={handleKbFileChange}
+                          disabled={uploadingKb}
+                          style={{ display: 'none' }}
+                        />
+                        <label htmlFor="kb-file-input" className="kb-file-label">
+                          <span className="kb-drop-icon">📄</span>
+                          {kbFile ? (
+                            <div className="kb-file-selected">
+                              <strong>{kbFile.name}</strong>
+                              <span>{(kbFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to upload</span>
+                            </div>
+                          ) : (
+                            <div>
+                              <strong>Click or drag to select a legal document</strong>
+                              <span>Supported formats: PDF (.pdf), Word (.docx), JSON (.json) — Max 15 MB</span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Metadata Form Grid */}
+                      <div className="kb-form-grid">
+                        <div className="kb-field">
+                          <label htmlFor="kb-title">Document Title</label>
+                          <input
+                            id="kb-title"
+                            type="text"
+                            placeholder="e.g. Digital Personal Data Protection Act, 2023"
+                            value={kbTitle}
+                            onChange={(e) => setKbTitle(e.target.value)}
+                            disabled={uploadingKb}
+                          />
+                        </div>
+
+                        <div className="kb-field">
+                          <label htmlFor="kb-act-name">Act / Statute Name</label>
+                          <input
+                            id="kb-act-name"
+                            type="text"
+                            placeholder="e.g. DPDP Act 2023"
+                            value={kbActName}
+                            onChange={(e) => setKbActName(e.target.value)}
+                            disabled={uploadingKb}
+                          />
+                        </div>
+
+                        <div className="kb-field">
+                          <label htmlFor="kb-topic">Primary Legal Topic</label>
+                          <input
+                            id="kb-topic"
+                            type="text"
+                            placeholder="e.g. Data Privacy and Protection"
+                            value={kbTopic}
+                            onChange={(e) => setKbTopic(e.target.value)}
+                            disabled={uploadingKb}
+                          />
+                        </div>
+
+                        <div className="kb-field">
+                          <label htmlFor="kb-jurisdiction">Jurisdiction</label>
+                          <input
+                            id="kb-jurisdiction"
+                            type="text"
+                            placeholder="e.g. India"
+                            value={kbJurisdiction}
+                            onChange={(e) => setKbJurisdiction(e.target.value)}
+                            disabled={uploadingKb}
+                          />
+                        </div>
+
+                        <div className="kb-field">
+                          <label htmlFor="kb-authority">Enacting / Governing Authority</label>
+                          <input
+                            id="kb-authority"
+                            type="text"
+                            placeholder="e.g. Ministry of Electronics and Information Technology"
+                            value={kbAuthority}
+                            onChange={(e) => setKbAuthority(e.target.value)}
+                            disabled={uploadingKb}
+                          />
+                        </div>
+
+                        <div className="kb-field">
+                          <label htmlFor="kb-version">Document Version</label>
+                          <input
+                            id="kb-version"
+                            type="text"
+                            placeholder="1.0"
+                            value={kbVersion}
+                            onChange={(e) => setKbVersion(e.target.value)}
+                            disabled={uploadingKb}
+                          />
+                        </div>
+
+                        <div className="kb-field">
+                          <label htmlFor="kb-effective-date">Effective Date (optional)</label>
+                          <input
+                            id="kb-effective-date"
+                            type="date"
+                            value={kbEffectiveDate}
+                            onChange={(e) => setKbEffectiveDate(e.target.value)}
+                            disabled={uploadingKb}
+                          />
+                        </div>
+
+                        <div className="kb-field kb-checkbox-field">
+                          <label className="kb-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={kbAutoActivate}
+                              onChange={(e) => setKbAutoActivate(e.target.checked)}
+                              disabled={uploadingKb}
+                            />
+                            <span>Auto-activate immediately (indexes vectors in Qdrant)</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {uploadingKb && (
+                        <div className="kb-progress-wrap">
+                          <div className="kb-progress-bar">
+                            <div className="kb-progress-fill" style={{ width: `${uploadProgress}%` }} />
+                          </div>
+                          <span>{uploadProgress > 0 ? `Uploading & indexing... ${uploadProgress}%` : 'Processing & generating embeddings...'}</span>
+                        </div>
+                      )}
+
+                      <div className="kb-form-actions">
+                        <button
+                          type="submit"
+                          className="admin-action-button success"
+                          disabled={uploadingKb || !kbFile}
+                        >
+                          {uploadingKb ? 'Processing & Indexing…' : 'Upload & Process Document'}
+                        </button>
+                      </div>
+                    </form>
+                  </section>
+
+                  {/* Document Inventory Table */}
+                  <section className="admin-panel">
+                    <div className="admin-panel-heading">
+                      <div>
+                        <h3>Authoritative Documents Inventory</h3>
+                        <p>Active documents are queried in real time by the Rights Explainer Agent.</p>
+                      </div>
+                      <span className="admin-data-label">{kbDocs.length} LOADED</span>
+                    </div>
+
+                    {kbDocs.length === 0 ? (
+                      <EmptyState message="No legal documents uploaded yet. Upload a PDF, Word, or JSON file above." />
+                    ) : (
+                      <div className="admin-table-wrap">
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Document & Statute</th>
+                              <th>Type</th>
+                              <th>Source / Authority</th>
+                              <th>Version</th>
+                              <th>Chunks</th>
+                              <th>Status</th>
+                              <th>Uploaded</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {kbDocs.map((doc) => (
+                              <tr key={doc.document_id}>
+                                <td>
+                                  <div className="admin-account">
+                                    <div className="admin-account-avatar kb-doc-icon">
+                                      {doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOC' : 'JSON'}
+                                    </div>
+                                    <div>
+                                      <strong>{doc.title}</strong>
+                                      <span>{doc.act_name} • {doc.file_name}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={`kb-type-badge kb-type-${doc.file_type}`}>
+                                    .{doc.file_type}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div>
+                                    <strong>{doc.authority || 'Official'}</strong>
+                                    <span style={{ fontSize: '11px', color: '#778397', display: 'block' }}>{doc.jurisdiction}</span>
+                                  </div>
+                                </td>
+                                <td>v{doc.version || '1.0'}</td>
+                                <td>
+                                  <strong className="admin-blue-text">{doc.chunk_count}</strong>
+                                </td>
+                                <td>
+                                  <span className={`admin-status ${doc.is_active ? 'is-active' : 'is-suspended'}`}>
+                                    <span className="admin-status-dot" />
+                                    {doc.status === 'active' ? 'Active' : doc.status === 'failed' ? 'Failed' : 'Inactive'}
+                                  </span>
+                                </td>
+                                <td>
+                                  {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : '—'}
+                                </td>
+                                <td>
+                                  <div className="kb-action-group">
+                                    <button
+                                      type="button"
+                                      className="admin-text-button"
+                                      onClick={() => handleInspectDoc(doc.document_id)}
+                                      disabled={inspectLoading}
+                                    >
+                                      Inspect
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      className={`admin-action-button ${doc.is_active ? 'danger' : 'success'}`}
+                                      disabled={busyDocId === doc.document_id}
+                                      onClick={() => handleToggleDocStatus(doc)}
+                                    >
+                                      {busyDocId === doc.document_id
+                                        ? '...'
+                                        : doc.is_active
+                                          ? 'Deactivate'
+                                          : 'Activate'}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      className="admin-action-button"
+                                      style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}
+                                      disabled={busyDocId === doc.document_id}
+                                      onClick={() => handleReprocessDoc(doc)}
+                                      title="Reprocess and re-chunk from disk"
+                                    >
+                                      ↺
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      className="admin-action-button danger"
+                                      disabled={busyDocId === doc.document_id}
+                                      onClick={() => handleDeleteDoc(doc)}
+                                      title="Permanently remove"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                </>
+              )}
+
+              {/* Document Inspection Modal */}
+              {selectedKbDoc && (
+                <div className="kb-modal-backdrop" onClick={() => setSelectedKbDoc(null)}>
+                  <div className="kb-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="kb-modal-header">
+                      <div>
+                        <span className="admin-eyebrow">LEGAL DOCUMENT INSPECTION</span>
+                        <h2>{selectedKbDoc.title}</h2>
+                        <span className="kb-modal-sub">
+                          {selectedKbDoc.act_name} • Version {selectedKbDoc.version} • {selectedKbDoc.chunk_count} chunks indexed
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="kb-modal-close"
+                        onClick={() => setSelectedKbDoc(null)}
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div className="kb-modal-body">
+                      {/* Metadata Summary Pill Row */}
+                      <div className="kb-modal-meta-row">
+                        <div className="kb-meta-pill">
+                          <span>Jurisdiction</span>
+                          <strong>{selectedKbDoc.jurisdiction}</strong>
+                        </div>
+                        <div className="kb-meta-pill">
+                          <span>Authority</span>
+                          <strong>{selectedKbDoc.authority || 'Not specified'}</strong>
+                        </div>
+                        <div className="kb-meta-pill">
+                          <span>File Format</span>
+                          <strong>.{selectedKbDoc.file_type?.toUpperCase()} ({(selectedKbDoc.file_size_bytes / 1024).toFixed(1)} KB)</strong>
+                        </div>
+                        <div className="kb-meta-pill">
+                          <span>Status</span>
+                          <strong className={selectedKbDoc.is_active ? 'admin-green-text' : 'admin-red-text'}>
+                            {selectedKbDoc.status?.toUpperCase()}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Text Preview */}
+                      <div className="kb-modal-section">
+                        <h4>Extracted Content Preview</h4>
+                        <pre className="kb-preview-box">
+                          {selectedKbDoc.preview_text || 'No preview available.'}
+                        </pre>
+                      </div>
+
+                      {/* Chunks Breakdown */}
+                      <div className="kb-modal-section">
+                        <h4>Indexed Chunks & Citations ({selectedKbDoc.chunks?.length || 0})</h4>
+                        <div className="kb-chunks-list">
+                          {selectedKbDoc.chunks?.map((chunk, idx) => (
+                            <div key={chunk.chunk_id || idx} className="kb-chunk-card">
+                              <div className="kb-chunk-head">
+                                <span className="kb-chunk-num">#{idx + 1}</span>
+                                <strong>{chunk.section || 'General Provision'}</strong>
+                                <span className="kb-chunk-cite">[Source: {chunk.citation}]</span>
+                              </div>
+                              <p className="kb-chunk-text">{chunk.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="kb-modal-footer">
+                      <button
+                        type="button"
+                        className="admin-action-button"
+                        onClick={() => setSelectedKbDoc(null)}
+                      >
+                        Close Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </>
           )}

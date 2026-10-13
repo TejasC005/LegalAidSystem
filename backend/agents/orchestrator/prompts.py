@@ -16,7 +16,9 @@ INTENT_CLASSIFICATION_SYSTEM = """You are the intent classifier for LEXIS, an AI
 Your ONLY job is to read the citizen's query and decide which of these 6 specialist agents should respond:
 
   rights   -> Explain legal rights, duties, protections under Indian law
-              (e.g. tenant rights, worker rights, consumer rights, constitutional rights)
+              (e.g. tenant rights, worker rights, consumer rights, constitutional rights,
+               defective product liability, damage/fire caused by goods, compensation claims,
+               consumer commissions/forums, maternity benefit, RTI)
   draft    -> Draft a legal document or template
               (e.g. rental agreement, legal notice, complaint letter, affidavit)
   analyze  -> Analyze a document the citizen has uploaded or pasted to identify risks or clauses
@@ -36,6 +38,12 @@ RULES:
 
 EXAMPLES:
   Query: "What are my rights as a tenant if my landlord refuses to return the security deposit?"
+  Output: rights
+
+  Query: "A defective washing machine caused a fire and damaged my furniture. Can I claim compensation for the damage?"
+  Output: rights
+
+  Query: "Who is included in the definition of a member of a Consumer Commission?"
   Output: rights
 
   Query: "I think I was scammed by a fake job offer, can you also help me write a complaint letter to the police?"

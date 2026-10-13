@@ -246,8 +246,10 @@ function RightsExplainer() {
 
       setMessages((prev) => [...prev, agentMsg]);
     } catch (err) {
-      console.error('Failed to execute query:', err);
-      const detail = err.response?.data?.detail || 'An error occurred while reaching the Rights Explainer Agent.';
+      const detail = err.response?.data?.detail
+        || (err.code === 'ECONNABORTED' ? 'Request timed out while contacting the Rights Explainer. Please try again.' : null)
+        || err.message
+        || 'An error occurred while reaching the Rights Explainer Agent.';
       setErrorMsg(detail);
       const errorAgentMsg = {
         sender: 'agent',

@@ -88,7 +88,6 @@ function App() {
         </Route>
       </Route>
 
-      ```jsx
       {/* Admin-only protected route */}
       <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
         <Route element={<AdminLayout />}>
@@ -98,7 +97,6 @@ function App() {
 
       {/* Public admin login */}
       <Route path="/admin/login" element={<AdminLogin />} />
-      ```
       {/* ── Lawyer-only protected route (allowedRoles=['lawyer']) ──────── */}
       {/*
         Module 13 scaffold: lawyer role has its own isolated route.
