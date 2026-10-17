@@ -1,0 +1,101 @@
+
+.admin-layout {
+  min-height: 100vh;
+  background: #f4f7fb;
+  color: #172b4d;
+}
+
+.admin-layout__header {
+  min-height: 68px;
+  box-sizing: border-box;
+  padding: 12px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #105647;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  position: relative;
+  z-index: 5;
+}
+
+.admin-layout__brand,
+.admin-layout__account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-layout__logo {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #79e0c0;
+}
+
+.admin-layout__name {
+  font-size: 23px;
+  font-weight: 750;
+  letter-spacing: 0.4px;
+}
+
+.admin-layout__tagline {
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 13px;
+  color: #d4e5e0;
+}
+
+.admin-layout__account {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-layout__badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: rgba(110, 231, 183, 0.15);
+  border: 1px solid rgba(110, 231, 183, 0.4);
+  color: #a7f3d0;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-layout__logout {
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.admin-layout__logout:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-layout__main {
+  min-width: 0;
+  min-height: calc(100vh - 68px);
+}
+
+@media (max-width: 650px) {
+  .admin-layout__header {
+    padding: 12px 14px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .admin-layout__tagline {
+    display: none;
+  }
+
+  .admin-layout__account {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

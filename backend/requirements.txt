@@ -24,6 +24,7 @@ langchain-core>=0.3.0
 # ── Auth ──────────────────────────────────────────────────────────────────────
 firebase-admin==6.5.0
 python-jose[cryptography]==3.3.0
+types-python-jose>=3.3.0
 email-validator>=2.1.0
 
 # ── Vector DB & Embeddings (RAG — Module 5) ─────────────────────────────────
@@ -32,6 +33,7 @@ fastembed>=0.8.0
 
 # ── Document Generation (Module 6) ───────────────────────────────────────────
 reportlab>=4.0.0
+types-reportlab>=5.0.0
 python-docx>=1.0.0
 
 # ── OCR & File Analysis (Module 7) ───────────────────────────────────────────

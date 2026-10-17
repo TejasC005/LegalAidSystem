@@ -79,6 +79,21 @@ class RightsAgent:
         self.qdrant_client = qdrant_client or get_qdrant_client()
         self.embedder = embedder or BGEM3Embedder()
         self.collection_name = collection_name or settings.QDRANT_COLLECTION_NAME
+        self._ensure_collection()
+
+    def _ensure_collection(self) -> None:
+        """Ensures the legal knowledge base collection exists; auto-seeds if missing."""
+        try:
+            collections = self.qdrant_client.get_collections().collections
+            if not any(c.name == self.collection_name for c in collections):
+                logger.info(
+                    "Collection '%s' missing in Qdrant. Auto-seeding starter legal knowledge base...",
+                    self.collection_name,
+                )
+                from services.rag.ingestion import seed_starter_knowledge_base
+                seed_starter_knowledge_base(client=self.qdrant_client, force_recreate=False)
+        except Exception as exc:
+            logger.warning("Could not auto-seed Qdrant collection '%s': %s", self.collection_name, exc)
 
     def retrieve_relevant_chunks(
         self, query: str, top_k: int = 3
@@ -88,6 +103,7 @@ class RightsAgent:
         Returns a list of tuples: (payload_dict, score_float).
         """
         try:
+            self._ensure_collection()
             query_vector = self.embedder.embed_query(query)
 
             # qdrant-client 1.19+ uses query_points(); older versions used search()
@@ -112,6 +128,9 @@ class RightsAgent:
             for hit in search_results:
                 payload = getattr(hit, "payload", {}) or {}
                 score = getattr(hit, "score", 0.0)
+                # Deactivated documents must never be returned
+                if payload.get("is_active") is False:
+                    continue
                 results.append((payload, score))
 
             logger.info(
@@ -141,6 +160,7 @@ class RightsAgent:
         confident_chunks = [
             payload for payload, score in retrieved if score >= CONFIDENCE_SCORE_THRESHOLD
         ]
+        self.last_confident_chunks = confident_chunks
 
         # ── Safeguard: Refuse unverified answers if no confident match ───────
         if not confident_chunks:
@@ -173,44 +193,66 @@ class RightsAgent:
 
         return validated_response, valid_citations, "ok"
 
+    def _synthesize_template_answer(self, query: str, chunks: List[Dict]) -> str:
+        """
+        Synthesizes a legally grounded answer from retrieved chunks when LLM is unavailable.
+        Selects the chunk with highest relevance to the query terms.
+        """
+        import re
+        if not chunks:
+            return RIGHTS_SAFEGUARD_FALLBACK
+
+        q_words = [w for w in re.findall(r'\w+', query.lower()) if len(w) > 3]
+
+        def relevance(c):
+            haystack = f"{c.get('topic', '')} {c.get('title', '')} {c.get('act_name', '')} {c.get('content', '')}".lower()
+            return sum(1 for w in q_words if w in haystack)
+
+        primary = max(chunks, key=relevance) if len(chunks) > 1 else chunks[0]
+        citation = primary.get("citation") or f"{primary.get('act_name', 'Legal Knowledge Base')} {primary.get('section', '')}".strip()
+
+        return (
+            f"Based on Indian law regarding **{primary.get('topic', 'Citizen Rights')}**:\n\n"
+            f"{primary.get('content', '')}\n\n"
+            f"**Key Provision:** {primary.get('act_name', '')} ({primary.get('section', '')})\n\n"
+            f"[Source: {citation}]"
+        )
+
     async def _generate_answer(self, query: str, context_str: str, chunks: List[Dict]) -> str:
-        """Calls LLM or falls back to template synthesis if API key missing."""
+        """Calls LLM with model fallback or falls back to template synthesis."""
         from core.config import get_settings
         settings = get_settings()
 
         api_key = settings.GEMINI_API_KEY or settings.OPENAI_API_KEY
         if not api_key or api_key.startswith("sk-replace"):
-            primary = chunks[0]
-            citation = primary.get("citation", "Legal Knowledge Base")
-            return (
-                f"Based on Indian law regarding **{primary.get('topic', 'Citizen Rights')}**:\n\n"
-                f"{primary.get('content', '')}\n\n"
-                f"**Key Provision:** {primary.get('act_name', '')} ({primary.get('section', '')})\n\n"
-                f"[Source: {citation}]"
-            )
+            return self._synthesize_template_answer(query, chunks)
 
-        try:
-            model_name = settings.GEMINI_MODEL_DEV if settings.GEMINI_API_KEY else settings.OPENAI_MODEL_DEV
-            from google import genai
-            client = genai.Client(api_key=api_key)
+        models_to_try = []
+        if settings.GEMINI_API_KEY:
+            if settings.GEMINI_MODEL_DEV:
+                models_to_try.append(settings.GEMINI_MODEL_DEV)
+            if "gemini-2.5-flash" not in models_to_try:
+                models_to_try.append("gemini-2.5-flash")
+        elif settings.OPENAI_API_KEY:
+            models_to_try.append(settings.OPENAI_MODEL_DEV)
 
-            prompt = f"{RIGHTS_EXPLAINER_SYSTEM}\n\n{RIGHTS_EXPLAINER_USER_TEMPLATE.format(query=query, context=context_str)}"
+        prompt = f"{RIGHTS_EXPLAINER_SYSTEM}\n\n{RIGHTS_EXPLAINER_USER_TEMPLATE.format(query=query, context=context_str)}"
 
-            res = await client.aio.models.generate_content(
-                model=model_name,
-                contents=prompt,
-            )
-            return res.text.strip() if res.text else ""
+        for model_name in models_to_try:
+            try:
+                from google import genai
+                client = genai.Client(api_key=api_key)
+                res = await client.aio.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+                if res and res.text:
+                    return res.text.strip()
+            except Exception as exc:
+                logger.warning("LLM call in RightsAgent failed with model %s: %s", model_name, exc)
 
-        except Exception as exc:
-            logger.error("LLM call failed in RightsAgent: %s. Using template synthesis.", exc)
-            primary = chunks[0]
-            citation = primary.get("citation", "Legal Knowledge Base")
-            return (
-                f"Based on Indian law regarding **{primary.get('topic', 'Citizen Rights')}**:\n\n"
-                f"{primary.get('content', '')}\n\n"
-                f"[Source: {citation}]"
-            )
+        logger.error("All LLM attempts failed in RightsAgent. Using template synthesis.")
+        return self._synthesize_template_answer(query, chunks)
 
     def _validate_and_attach_citation(self, draft: str, valid_citations: List[str]) -> str:
         """

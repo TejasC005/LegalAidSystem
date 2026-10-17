@@ -351,16 +351,21 @@ class TestOrchestratorRouting:
                 query="Someone called saying I am under digital arrest",
                 state={
                     "query": "Someone called saying I am under digital arrest",
+                    "session_id": "test-session-id",
+                    "conversation_history": [],
                     "intents": [AgentIntent.SCAM],
                     "confidence": 0.9,
                     "scratchpad": [],
+                    "final_response": "",
+                    "status": "processing",
                     "llm_calls_used": 0,
                     "llm_calls_limit": 10,
-                    "status": "processing",
-                    "final_response": "",
-                    "_current_intent": AgentIntent.SCAM,
                     "retry_target": None,
-                }
+                    "retry_counts": {},
+                    "retry_feedback": "",
+                    "contradiction_note": None,
+                    "confirmed_outputs": None,
+                },
             )
 
         output_text, metadata, llm_calls = result
@@ -383,3 +388,44 @@ class TestOrchestratorRouting:
         print(f"  DB ID returned: {metadata.get('db_id')}")
         print(f"  LLM calls used: {llm_calls} (must be 0 — fully DB-grounded)")
         print(f"  Severity: {metadata.get('severity')}")
+
+
+# =============================================================================
+# Test 6 — Multi-pattern detection coverage for representative scenarios
+# =============================================================================
+
+class TestMultiScamDetectionCoverage:
+    """
+    Verifies that various common scam scenarios (UPI QR, PMLA freeze, Aadhaar,
+    courier drugs, crypto Telegram) are detected and correctly grounded.
+    """
+
+    @pytest.mark.asyncio
+    async def test_realistic_scam_queries_match_patterns(self):
+        from db.qdrant_client import reset_in_memory_client
+        from agents.scam_detection.agent import ScamDetectionAgent, reset_scam_agent
+
+        reset_in_memory_client()
+        reset_scam_agent()
+        agent = ScamDetectionAgent()
+
+        test_cases = [
+            ("A person called claiming I am under digital arrest by CBI", "SCAM_001"),
+            ("A courier company said my package was seized with drugs and demanded Rs 15,000", "SCAM_003"),
+            ("Someone told me to scan a QR code to receive ₹5,000 on PhonePe", "SCAM_004"),
+            ("I got a message saying my Aadhaar is suspended and KYC must be updated", "SCAM_005"),
+            ("An investment app on Telegram promised 35% monthly returns on crypto trading", "SCAM_010"),
+            ("A caller said my bank account is frozen under PMLA and I must transfer money to a safe account", "SCAM_015"),
+        ]
+
+        for query, expected_id in test_cases:
+            result = await agent.check_scam(query)
+            assert result.matched is True, f"Failed to match query: '{query}'"
+            assert result.db_id == expected_id, (
+                f"Query '{query}' expected pattern {expected_id}, but got {result.db_id} ({result.pattern_name})"
+            )
+            assert result.legal_reality.strip(), f"Legal reality missing for {expected_id}"
+            assert result.recommended_action.strip(), f"Recommended action missing for {expected_id}"
+
+        reset_scam_agent()
+

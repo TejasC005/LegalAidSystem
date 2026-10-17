@@ -22,6 +22,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
+import {
+  Scale,
+  Check,
+  Info,
+  AlertTriangle,
+  Lock,
+  Lightbulb,
+  ArrowLeft,
+  Mail,
+  ArrowRight,
+} from 'lucide-react';
 import { sendOtp, verifyOtp, getMe } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
@@ -257,7 +268,9 @@ function Login() {
 
         {/* Logo / Brand Header */}
         <div className="login-card__brand">
-          <span className="login-card__logo" role="img" aria-label="Scales of Justice">⚖</span>
+          <div className="login-card__logo-wrapper">
+            <Scale size={32} color="#1a6b5a" />
+          </div>
           <h1 className="login-card__title">LEXIS</h1>
           <p className="login-card__subtitle">Autonomous Legal Aid System</p>
         </div>
@@ -265,7 +278,13 @@ function Login() {
         {/* Step Indicator */}
         <div className="login-steps" aria-label="Sign-in progress">
           <span className={`login-step ${step === 'email' ? 'login-step--active' : 'login-step--done'}`}>
-            {step === 'otp' ? '✓ Email' : '1 · Email'}
+            {step === 'otp' ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                <Check size={12} /> Email
+              </span>
+            ) : (
+              '1 · Email'
+            )}
           </span>
           <span className="login-steps__connector" />
           <span className={`login-step ${step === 'otp' ? 'login-step--active' : ''}`}>
@@ -276,7 +295,7 @@ function Login() {
         {/* Info Feedback Banner */}
         {info && (
           <div className="login-info" role="status">
-            <span className="login-info__icon">ℹ️</span>
+            <Info size={16} className="login-info__icon" />
             <span>{info}</span>
           </div>
         )}
@@ -284,7 +303,7 @@ function Login() {
         {/* Error Feedback Banner */}
         {error && (
           <div className="login-error" role="alert">
-            <span className="login-error__icon">⚠️</span>
+            <AlertTriangle size={16} className="login-error__icon" />
             <span>{error}</span>
           </div>
         )}
@@ -297,19 +316,7 @@ function Login() {
             </label>
             <div className="login-input-group">
               <span className="login-input-icon" aria-hidden="true">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="20" height="16" x="2" y="4" rx="2" />
-                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                </svg>
+                <Mail size={18} />
               </span>
               <input
                 id="email"
@@ -329,7 +336,8 @@ function Login() {
             </div>
 
             <p className="login-hint">
-              🔒 <strong>Passwordless & Secure:</strong> We will email you a 6-digit one-time code to authenticate your session.
+              <Lock size={13} style={{ verticalAlign: 'text-bottom', marginRight: 4, color: '#1a6b5a' }} />
+              <strong>Passwordless & Secure:</strong> We will email you a 6-digit one-time code to authenticate your session.
             </p>
 
             <button
@@ -342,7 +350,9 @@ function Login() {
                   <span className="login-spinner" /> Sending Code…
                 </span>
               ) : (
-                'Send Verification Code →'
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  Send Verification Code <ArrowRight size={15} />
+                </span>
               )}
             </button>
           </form>
@@ -409,7 +419,9 @@ function Login() {
                   <span className="login-spinner" /> Verifying…
                 </span>
               ) : (
-                'Verify & Sign in →'
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  Verify & Sign in <ArrowRight size={15} />
+                </span>
               )}
             </button>
 
@@ -434,7 +446,8 @@ function Login() {
             {/* Micro-guide helper */}
             <div className="login-troubleshoot-hints">
               <p className="login-hint-item">
-                💡 <strong>Tip:</strong> If you don't see the email within 30 seconds, please check your <em>Spam</em> or <em>Promotions</em> folder.
+                <Lightbulb size={13} style={{ verticalAlign: 'text-bottom', marginRight: 4, color: '#1a6b5a' }} />
+                <strong>Tip:</strong> If you don't see the email within 30 seconds, please check your <em>Spam</em> or <em>Promotions</em> folder.
               </p>
             </div>
 
@@ -450,7 +463,8 @@ function Login() {
               }}
               disabled={loading}
             >
-              ← Use a different email
+              <ArrowLeft size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+              Use a different email
             </button>
           </form>
         )}

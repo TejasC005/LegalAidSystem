@@ -77,9 +77,28 @@
   transform: translateY(-3px);
 }
 
+.home-feature-card__icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  transition: all 0.2s ease;
+}
+
+.home-feature-card:hover .home-feature-card__icon-wrap {
+  background: #1a6b5a;
+  color: #ffffff;
+  border-color: #1a6b5a;
+  transform: scale(1.05);
+}
+
 .home-feature-card__icon {
-  font-size: 2rem;
-  line-height: 1;
+  display: block;
 }
 
 .home-feature-card__body {

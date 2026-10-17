@@ -88,6 +88,7 @@ is wired here as a comment block to make Module 11 a simple addition.
 
 import asyncio
 import logging
+import re
 import time
 from typing import List
 from uuid import uuid4
@@ -184,7 +185,7 @@ async def _call_llm_classifier(query: str):
     Makes an LLM API call to classify the query into AgentIntent values.
 
     Returns (list[AgentIntent], confidence_float).
-    Uses Google GenAI (Gemini) API.
+    Uses Google GenAI (Gemini) API with fallback model resilience.
     """
     from core.config import get_settings
     settings = get_settings()
@@ -193,43 +194,63 @@ async def _call_llm_classifier(query: str):
     if not api_key or api_key.startswith("sk-replace"):
         raise RuntimeError("No valid LLM API key configured -- using keyword fallback")
 
-    model_name = settings.GEMINI_MODEL_DEV if settings.GEMINI_API_KEY else settings.OPENAI_MODEL_DEV
-
-    from google import genai
-    client = genai.Client(api_key=api_key)
     prompt = f"{INTENT_CLASSIFICATION_SYSTEM}\n\n{INTENT_CLASSIFICATION_USER_TEMPLATE.format(query=query)}"
 
-    response = await client.aio.models.generate_content(
-        model=model_name,
-        contents=prompt,
-    )
-    raw = response.text.strip().lower() if response.text else ""
+    models_to_try = []
+    if settings.GEMINI_API_KEY:
+        if settings.GEMINI_MODEL_DEV:
+            models_to_try.append(settings.GEMINI_MODEL_DEV)
+        if "gemini-2.5-flash" not in models_to_try:
+            models_to_try.append("gemini-2.5-flash")
+    elif settings.OPENAI_API_KEY:
+        models_to_try.append(settings.OPENAI_MODEL_DEV)
 
-    return _parse_intent_response(raw)
+    last_exc = None
+    for model_name in models_to_try:
+        try:
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            response = await client.aio.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
+            raw = response.text.strip().lower() if response and response.text else ""
+            return _parse_intent_response(raw)
+        except Exception as exc:
+            logger.warning("LLM classifier failed with model %s: %s", model_name, exc)
+            last_exc = exc
+
+    raise last_exc or RuntimeError("All LLM classification attempts failed")
 
 
 def _keyword_classifier_fallback(query: str):
     """
-    Lightweight keyword-based intent classifier used when no API key is set.
+    Lightweight keyword-based intent classifier used when no API key is set
+    or when external LLM calls encounter transient failures.
 
-    This is NOT a replacement for the LLM classifier -- it is a development
-    fallback that allows the full graph to run and be tested locally without
-    spending API credits.  Returns (list[AgentIntent], confidence_float).
+    Returns (list[AgentIntent], confidence_float).
     """
     q = query.lower()
     matched = []
 
     keyword_map = {
-        AgentIntent.RIGHTS:  ["right", "rights", "law", "legal", "protection", "tenant", "landlord", "deposit", "worker", "employee", "consumer", "constitution", "posh", "harassment", "maternity"],
+        AgentIntent.RIGHTS:  [
+            "right", "rights", "law", "legal", "protection", "tenant", "landlord",
+            "deposit", "worker", "employee", "consumer", "constitution", "posh",
+            "harassment", "maternity", "rti", "pio", "information",
+            "defective", "defect", "defects", "compensation", "damage", "damages",
+            "product liability", "liability", "warranty", "refund", "commission",
+            "appliance", "goods", "fire",
+        ],
         AgentIntent.DRAFT:   ["draft", "write", "template", "agreement", "notice", "letter", "affidavit", "document"],
         AgentIntent.ANALYZE: ["analyze", "analyse", "review", "check", "clause", "contract", "risk", "flag"],
         AgentIntent.SCAM:    ["scam", "fraud", "fake", "suspicious", "cheat", "phishing", "lottery", "prize"],
-        AgentIntent.FILING:  ["file", "filing", "report", "complaint", "court", "police", "rti", "forum", "fir", "submit"],
+        AgentIntent.FILING:  ["file a complaint", "where to file", "how to file", "filing", "lodge complaint", "file complaint", "consumer forum", "court", "police station", "fir", "filing guide", "portal"],
         AgentIntent.VAULT:   ["save", "store", "remind", "reminder", "deadline", "expire", "document vault", "track"],
     }
 
     for intent, keywords in keyword_map.items():
-        if any(kw in q for kw in keywords):
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in keywords):
             matched.append(intent)
 
     confidence = 0.75 if matched else 0.0
@@ -440,16 +461,15 @@ async def _run_specialist_work(
         response_text, citations, status = await rights_agent.explain_rights(query)
 
         # Get verification status from the highest-ranked confident legal chunk
-        retrieved = rights_agent.retrieve_relevant_chunks(query, top_k=3)
+        confident_chunks = getattr(rights_agent, "last_confident_chunks", None)
+        if confident_chunks is None:
+            retrieved = rights_agent.retrieve_relevant_chunks(query, top_k=3)
+            confident_chunks = [p for p, s in retrieved if s >= 0.25]
 
         verification_status = "unverified"
-
-        for payload, score in retrieved:
-            if score >= 0.25:
-                verification_status = payload.get(
-                    "verification_status",
-                    "unverified"
-                )
+        for payload in confident_chunks:
+            if payload.get("verification_status"):
+                verification_status = payload["verification_status"]
                 break
 
         metadata = {

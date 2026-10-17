@@ -20,7 +20,13 @@ import time
 from typing import Dict, Any, List, Optional, Tuple
 
 from agents.orchestrator.state import AgentOutput, OrchestratorState
-from agents.document_drafter.templates import TEMPLATES, assemble_legal_notice, assemble_rti_application, assemble_consumer_complaint
+from agents.document_drafter.templates import (
+    TEMPLATES,
+    TemplateConfig,
+    assemble_legal_notice,
+    assemble_rti_application,
+    assemble_consumer_complaint,
+)
 from agents.document_drafter.prompts import DOCUMENT_DRAFTER_SYSTEM
 
 logger = logging.getLogger(__name__)
@@ -33,7 +39,7 @@ class DocumentDrafterAgent:
     """
 
     def __init__(self):
-        self.templates = TEMPLATES
+        self.templates: Dict[str, TemplateConfig] = TEMPLATES
 
     def match_template_type(self, query: str) -> str:
         """Determines the document template type based on user query keywords."""

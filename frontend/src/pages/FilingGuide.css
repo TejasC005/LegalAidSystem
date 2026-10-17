@@ -206,6 +206,7 @@
   background: rgba(16, 185, 129, 0.08);
   border-color: rgba(16, 185, 129, 0.35);
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(26, 107, 90, 0.08);
 }
 
 .chip-icon {

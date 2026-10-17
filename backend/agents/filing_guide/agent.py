@@ -21,6 +21,7 @@ RESPONSIBILITIES:
 
 import json
 import logging
+import re
 import time
 from typing import Dict, Any, Optional, Tuple, List
 
@@ -128,8 +129,27 @@ class FilingGuideAgent:
             _AUTHORITY_CACHE.update(_build_authority_cache())
 
     def _infer_doc_type_from_query(self, query: str) -> Optional[str]:
-        """Infers document type from query text using catalog keywords."""
-        return self.catalog.infer_doc_type(query)
+        """
+        Infers document type from natural language query keywords.
+        Used by the orchestrator text-only path.
+
+        RTI and consumer complaint keywords are distinct; everything else
+        defaults to legal_notice (the most general document type).
+        """
+        q = query.lower()
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in ["rti", "right to information", "public information officer", "pio"]):
+            return "rti_application"
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in [
+            "consumer", "consumer complaint", "defective product", "service deficiency",
+            "consumer forum", "district forum", "ncdrc", "consumer court"
+        ]):
+            return "consumer_complaint"
+        if any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in [
+            "legal notice", "demand notice", "landlord", "rent", "deposit",
+            "contract breach"
+        ]):
+            return "legal_notice"
+        return None
 
     async def lookup_authority(
         self,
@@ -533,24 +553,24 @@ Ensure verified government portals are highlighted, required documents and step-
         # Fee
         fee = record.get("fee", {})
         if fee:
-            lines.append("**Applicable Statutory Fees:**")
-            if fee.get("amount_central"):
-                lines.append(f"- Central fee: {fee['amount_central']}")
-            if fee.get("structure"):
-                lines.append(f"- Structure: {fee['structure']}")
-            if fee.get("fee_exemption"):
-                lines.append(f"- Exemption: {fee['fee_exemption']}")
-            if fee.get("state_fees"):
-                lines.append(f"- State fees: {fee['state_fees']}")
-            lines.append("")
+            output_lines.append("**Fee:**")
+            for k, v in fee.items():
+                if k == "source" or not v:
+                    continue
+                label = k.replace("_", " ").title()
+                if isinstance(v, list):
+                    output_lines.append(f"  - {label}: {', '.join(str(i) for i in v)}")
+                else:
+                    output_lines.append(f"  - {label}: {v}")
+            output_lines.append("")
 
-        # Mistakes
-        mistakes = record.get("common_mistakes", [])
-        if mistakes:
-            lines.append("**Common Mistakes to Avoid:**")
-            for m in mistakes:
-                lines.append(f"- ⚠️ {m}")
-            lines.append("")
+        # Documents
+        required_docs = record.get("required_documents", [])
+        if required_docs:
+            output_lines.append("**Documents Required:**")
+            for doc in required_docs:
+                output_lines.append(f"  - {doc}")
+            output_lines.append("")
 
         # Legal basis
         if record.get("legal_basis"):

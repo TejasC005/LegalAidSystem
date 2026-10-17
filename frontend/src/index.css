@@ -18,33 +18,42 @@
 
 /* ── Design tokens (colour palette + spacing) ───────────────────────────── */
 :root {
-  /* Primary colours */
-  --color-primary:        #1a6b5a;   /* Deep teal — brand primary */
-  --color-primary-light:  #22897a;   /* Slightly lighter teal for hovers */
-  --color-primary-dark:   #134e42;   /* Darker teal for pressed states */
+  /* Primary colours (Forest Green & Emerald) */
+  --color-primary:        #1a6b5a;   /* Brand Forest Green */
+  --color-primary-light:  #22897a;   /* Lighter teal/emerald for hovers */
+  --color-primary-dark:   #134e42;   /* Deep forest green for header & active states */
+  --color-primary-deep:   #0e382f;   /* Darkest spruce */
+
+  /* Accent colours */
+  --color-accent-emerald: #10b981;   /* Vibrant emerald for success, verified badges */
+  --color-accent-mint:    #6ee7b7;   /* Mint for dark-bg tags and highlights */
+  --color-accent-sage:    #e6f4f1;   /* Soft sage tint */
 
   /* Background colours */
-  --color-bg:             #f4f6f5;   /* Page background — off-white with slight green tint */
+  --color-bg:             #f4f6f5;   /* Page background — clean off-white with subtle sage tint */
   --color-surface:        #ffffff;   /* Card / panel background */
-  --color-sidebar-bg:     #1a2e2b;   /* Dark sidebar background */
+  --color-surface-subtle: #f8faf9;   /* Sub-panel / table alternate background */
+  --color-sidebar-bg:     #142823;   /* Dark forest sidebar */
   --color-sidebar-text:   #c8d8d5;   /* Sidebar text colour */
-  --color-sidebar-hover:  #243b37;   /* Sidebar link hover background */
+  --color-sidebar-hover:  #1d3b34;   /* Sidebar link hover background */
   --color-sidebar-active: #1a6b5a;   /* Active link background = primary */
 
   /* Text colours */
-  --color-text:           #1c2b28;   /* Primary body text */
+  --color-text:           #1c2b28;   /* Primary body & heading text */
+  --color-text-body:      #1e293b;   /* Crisp body copy */
   --color-text-secondary: #4a6560;   /* Muted / secondary text */
   --color-text-inverse:   #ffffff;   /* Text on dark backgrounds */
 
   /* Border & accent */
-  --color-border:         #d0dbd8;   /* Subtle divider lines */
-  --color-danger:         #c0392b;   /* Error / destructive actions */
-  --color-warning:        #d68910;   /* Warning highlights */
-  --color-success:        #1e8449;   /* Success states */
+  --color-border:         #d0dbd8;   /* Standard border */
+  --color-border-subtle:  #e2e8f0;   /* Soft divider */
+  --color-danger:         #dc2626;   /* Error / destructive actions */
+  --color-warning:        #d97706;   /* Warning highlights */
+  --color-success:        #10b981;   /* Success states */
 
   /* Sizing */
-  --sidebar-width:        240px;
-  --header-height:        60px;
+  --sidebar-width:        250px;
+  --header-height:        64px;
   --footer-height:        48px;
   --border-radius:        8px;
   --border-radius-lg:     14px;
@@ -54,9 +63,9 @@
   --font-size-base: 15px;
 
   /* Shadows */
-  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.10);
-  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md:  0 4px 12px rgba(20, 60, 50, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg:  0 8px 24px rgba(20, 60, 50, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Reset ───────────────────────────────────────────────────────────────── */

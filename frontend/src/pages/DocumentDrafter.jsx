@@ -19,6 +19,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  FileEdit,
+  Landmark,
+  Scale,
+  ShoppingCart,
+  Folder,
+  Download,
+  ArrowLeft,
+  ArrowRight,
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  Loader2,
+} from 'lucide-react';
+import {
   getDraftTemplates,
   startDraftSession,
   submitDraftAnswer,
@@ -110,7 +125,8 @@ function DocumentDrafter() {
           ...prev,
           {
             sender: 'system',
-            text: '🎉 Document assembly complete! See the preview below.',
+            text: 'Document assembly complete! See the preview below.',
+            isComplete: true,
           },
         ]);
         loadTemplatesAndDrafts();
@@ -158,12 +174,20 @@ function DocumentDrafter() {
     setCurrentAnswer('');
   };
 
+  const getTemplateIcon = (id) => {
+    if (id === 'rti_application') return <Landmark size={26} className="template-icon-svg" />;
+    if (id === 'legal_notice') return <Scale size={26} className="template-icon-svg" />;
+    return <ShoppingCart size={26} className="template-icon-svg" />;
+  };
+
   return (
     <div className="drafter-container">
       {/* Banner */}
       <div className="drafter-header">
         <div className="drafter-title-area">
-          <span className="drafter-icon">📄</span>
+          <div className="drafter-icon-wrapper">
+            <FileEdit size={26} color="#ffffff" />
+          </div>
           <div>
             <h1 className="drafter-title">Document Drafter Agent</h1>
             <p className="drafter-subtitle">
@@ -174,7 +198,12 @@ function DocumentDrafter() {
         <span className="badge-drafter">Clause Engine + PDF/DOCX</span>
       </div>
 
-      {errorMsg && <div className="error-banner">⚠️ {errorMsg}</div>}
+      {errorMsg && (
+        <div className="error-banner">
+          <AlertTriangle size={18} />
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
       {/* Step 1: Template Selection (if no session active) */}
       {!selectedTemplate && (
@@ -183,14 +212,17 @@ function DocumentDrafter() {
           <div className="templates-grid">
             {templates.map((tpl) => (
               <div key={tpl.id} className="template-card" onClick={() => handleStartSession(tpl.id)}>
-                <div className="template-card-icon">
-                  {tpl.id === 'rti_application' ? '🏛️' : tpl.id === 'legal_notice' ? '⚖️' : '🛒'}
+                <div className="template-card-icon-badge">
+                  {getTemplateIcon(tpl.id)}
                 </div>
                 <h3>{tpl.name}</h3>
                 <p>{tpl.description}</p>
                 <div className="template-card-footer">
                   <span>{tpl.total_questions} Questions</span>
-                  <button className="btn-start-draft">Start Draft →</button>
+                  <button className="btn-start-draft">
+                    <span>Start Draft</span>
+                    <ArrowRight size={14} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -199,7 +231,10 @@ function DocumentDrafter() {
           {/* Saved Drafts Section */}
           {savedDrafts.length > 0 && (
             <div className="saved-drafts-section">
-              <h3>📁 Your Saved Drafted Documents</h3>
+              <div className="saved-drafts-header">
+                <Folder size={20} color="#1a6b5a" />
+                <h3>Your Saved Drafted Documents</h3>
+              </div>
               <div className="saved-drafts-list">
                 {savedDrafts.map((d) => (
                   <div key={d.draft_id} className="saved-draft-item">
@@ -209,10 +244,12 @@ function DocumentDrafter() {
                     </div>
                     <div className="download-actions">
                       <button className="btn-download pdf" onClick={() => handleDownload(d.draft_id, 'pdf')}>
-                        📥 PDF
+                        <Download size={14} />
+                        <span>PDF</span>
                       </button>
                       <button className="btn-download docx" onClick={() => handleDownload(d.draft_id, 'docx')}>
-                        📥 DOCX
+                        <Download size={14} />
+                        <span>DOCX</span>
                       </button>
                     </div>
                   </div>
@@ -227,7 +264,10 @@ function DocumentDrafter() {
       {selectedTemplate && sessionData && (
         <div className="active-drafting-session">
           <div className="session-top-bar">
-            <button className="btn-back" onClick={resetSession}>← Back to Templates</button>
+            <button className="btn-back" onClick={resetSession}>
+              <ArrowLeft size={16} />
+              <span>Back to Templates</span>
+            </button>
             <div className="session-progress">
               <span>Progress: {sessionData.questions_answered} / {sessionData.total_questions}</span>
               <div className="progress-bar-bg">
@@ -244,7 +284,10 @@ function DocumentDrafter() {
             {history.map((item, idx) => (
               <div key={idx} className={`chat-row ${item.sender}`}>
                 {item.sender === 'system' && (
-                  <div className="system-msg">{item.text}</div>
+                  <div className="system-msg">
+                    {item.isComplete && <CheckCircle2 size={16} color="#10b981" style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />}
+                    <span>{item.text}</span>
+                  </div>
                 )}
                 {item.sender === 'user' && (
                   <div className="user-bubble">{item.text}</div>
@@ -260,7 +303,10 @@ function DocumentDrafter() {
 
             {isLoading && (
               <div className="chat-row agent">
-                <div className="typing-indicator">⚙️ Processing your answer...</div>
+                <div className="typing-indicator">
+                  <Loader2 size={16} className="spinning-icon" />
+                  <span>Processing your answer...</span>
+                </div>
               </div>
             )}
           </div>
@@ -278,7 +324,8 @@ function DocumentDrafter() {
                 autoFocus
               />
               <button type="submit" className="btn-submit-answer" disabled={isLoading || !currentAnswer.trim()}>
-                Next Step →
+                <span>Next Step</span>
+                <ArrowRight size={16} />
               </button>
             </form>
           )}
@@ -287,32 +334,28 @@ function DocumentDrafter() {
           {sessionData.status === 'completed' && sessionData.assembled_document && (
             <div className="document-preview-card">
               <div className="preview-header">
-                <h3>📜 Assembled Document Preview</h3>
+                <div className="preview-title-area">
+                  <FileText size={20} color="#1a6b5a" />
+                  <h3>Assembled Document Preview</h3>
+                </div>
                 <div className="preview-download-buttons">
                   <button
                     className="btn-download pdf"
                     onClick={() => handleDownload(sessionData.draft_id, 'pdf')}
                   >
-                    📥 Download PDF
+                    <Download size={14} />
+                    <span>Download PDF</span>
                   </button>
                   <button
                     className="btn-download docx"
                     onClick={() => handleDownload(sessionData.draft_id, 'docx')}
                   >
-                    📥 Download DOCX
+                    <Download size={14} />
+                    <span>Download DOCX</span>
                   </button>
                   {/*
                    * MODULE 9 HANDOFF BUTTON
-                   * ─────────────────────────────────────────────────────────
-                   * Clicking this takes the citizen to the Filing Guide with
-                   * their doc_type and draft_id pre-filled via URL params.
-                   *
-                   * The Filing Guide reads doc_type from the draft record
-                   * in MongoDB — NO re-entry required. The citizen immediately
-                   * sees the correct filing authority for their document type.
-                   *
-                   * doc_type is authoritative structured data (not re-classified
-                   * natural language), so there is zero risk of misclassification.
+                   * Navigates to /filing-guide?doc_type=...&draft_id=...
                    */}
                   <button
                     id="btn-where-to-file"
@@ -324,7 +367,8 @@ function DocumentDrafter() {
                     }
                     title="Find the correct government authority, portal and documents required to file this complaint"
                   >
-                    📋 Where to File →
+                    <ClipboardList size={15} />
+                    <span>Where to File →</span>
                   </button>
                 </div>
               </div>

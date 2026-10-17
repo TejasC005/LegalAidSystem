@@ -30,15 +30,33 @@
 .app-header__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.app-header__logo {
-  font-size: 1.5rem;
+.app-header__logo-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #a7f3d0;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.app-header__logo-wrap:hover {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.app-header__logo-icon {
+  color: #6ee7b7;
 }
 
 .app-header__name {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #ffffff;
@@ -46,9 +64,10 @@
 
 .app-header__tagline {
   font-size: 0.8rem;
-  color: rgba(255,255,255,0.65);
-  padding-left: 4px;
+  color: rgba(255,255,255,0.7);
+  padding-left: 6px;
   display: none;              /* Hidden on small screens */
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 @media (min-width: 640px) {
@@ -63,15 +82,17 @@
 
 .app-header__phone {
   font-size: 0.85rem;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255,255,255,0.85);
+  font-weight: 500;
 }
 
 .app-header__role-badge {
   font-size: 0.72rem;
-  font-weight: 600;
-  background: rgba(255,255,255,0.15);
-  color: #fff;
-  padding: 2px 9px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  color: #a7f3d0;
+  padding: 2px 10px;
   border-radius: 20px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -79,14 +100,15 @@
 
 .app-header__logout-btn {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.85);
-  border-color: rgba(255,255,255,0.4);
-  padding: 5px 12px;
+  color: rgba(255,255,255,0.9);
+  border-color: rgba(255,255,255,0.35);
+  padding: 6px 14px;
+  border-radius: 6px;
 }
 
 .app-header__logout-btn:hover {
-  background-color: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.7);
+  background-color: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.6);
 }
 
 /* ── Body (sidebar + main content) ──────────────────────────────────────── */
@@ -103,14 +125,15 @@
   flex-shrink: 0;             /* Sidebar never shrinks below its width */
   overflow-y: auto;           /* Scroll if links overflow */
   padding: 16px 0;
+  border-right: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .app-sidebar__list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 8px;
+  gap: 4px;
+  padding: 0 10px;
 }
 
 .app-sidebar__item {
@@ -119,16 +142,26 @@
 
 /* Base link style */
 .app-sidebar__link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 10px 14px;
   border-radius: var(--border-radius);
   color: var(--color-sidebar-text);
   font-size: 0.88rem;
   font-weight: 500;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: all 0.15s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.app-sidebar__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
 }
 
 .app-sidebar__link:hover {
@@ -136,11 +169,22 @@
   color: #ffffff;
 }
 
+.app-sidebar__link:hover .app-sidebar__icon {
+  opacity: 1;
+  color: #6ee7b7;
+}
+
 /* Active link (NavLink adds this class automatically) */
 .app-sidebar__link--active {
   background-color: var(--color-sidebar-active);
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app-sidebar__link--active .app-sidebar__icon {
+  opacity: 1;
+  color: #ffffff;
 }
 
 /* ── Main content area ───────────────────────────────────────────────────── */

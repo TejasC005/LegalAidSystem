@@ -2,13 +2,13 @@
 
 .profile-setup-container {
   max-width: 650px;
-  margin: 2rem auto;
+  margin: 2.5rem auto;
   padding: 2.5rem;
-  background: var(--color-surface, #1e293b);
-  border: 1px solid var(--color-border, #334155);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  color: var(--color-text, #f8fafc);
+  background: #ffffff;
+  border: 1px solid var(--color-border, #d0dbd8);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(20, 60, 50, 0.08);
+  color: var(--color-text, #1c2b28);
 }
 
 .profile-setup-header {
@@ -20,70 +20,71 @@
   font-size: 1.875rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #14b8a6, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #134e42;
 }
 
 .profile-setup-header p {
-  color: #94a3b8;
+  color: var(--color-text-secondary, #4a6560);
   font-size: 0.95rem;
 }
 
-.profile-form-grid {
+.profile-setup-container .profile-form-grid {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
 }
 
-.form-group {
+.profile-setup-container .form-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.form-group label {
+.profile-setup-container .form-group label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #cbd5e1;
+  color: #1e293b;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.profile-setup-container .form-group input,
+.profile-setup-container .form-group select,
+.profile-setup-container .form-group textarea {
   padding: 0.75rem 1rem;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.95rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.profile-setup-container .form-group input:focus,
+.profile-setup-container .form-group select:focus,
+.profile-setup-container .form-group textarea:focus {
   outline: none;
-  border-color: #14b8a6;
+  border-color: #1a6b5a;
+  box-shadow: 0 0 0 3px rgba(26, 107, 90, 0.15);
 }
 
-.form-actions {
+.profile-setup-container .form-actions {
   display: flex;
   gap: 1rem;
   margin-top: 1.5rem;
   justify-content: flex-end;
 }
 
-.btn-skip {
+.profile-setup-container .btn-skip {
   background: transparent;
-  border: 1px solid #475569;
-  color: #94a3b8;
+  border: 1.5px solid #cbd5e1;
+  color: #64748b;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
-.btn-skip:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #f8fafc;
+.profile-setup-container .btn-skip:hover {
+  background: #f1f5f9;
+  color: #1e293b;
 }
