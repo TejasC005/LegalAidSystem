@@ -297,6 +297,24 @@ export async function getScamPatterns() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Module 9: Interactive conversational filing guide and follow-up Q&A.
+ *
+ * @param {string} query Citizen's filing query or follow-up question
+ * @param {Array} conversationHistory Prior conversation turns [{sender, text}]
+ * @param {string|null} draftId Optional draft UUID carried from Document Drafter handoff
+ * @param {string|null} docType Optional explicit document type
+ * @returns {Promise} Resolves with { reply_text, guide, intent, doc_type, verified, sources, disclaimer }
+ */
+export function getFilingGuide(query, conversationHistory = [], draftId = null, docType = null) {
+  return api.post('/api/v1/filing/guide', {
+    query,
+    conversation_history: conversationHistory,
+    draft_id: draftId,
+    doc_type: docType,
+  });
+}
+
+/**
  * Module 9: Look up the filing authority for a given document type.
  *
  * DIRECT LOOKUP PATH:

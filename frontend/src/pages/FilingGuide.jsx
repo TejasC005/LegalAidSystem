@@ -1,455 +1,714 @@
 /*
  * frontend/src/pages/FilingGuide.jsx
  * ──────────────────────────────────────────────────────────────────────────
- * LEXIS — Complaint Filing Guide (Module 9)
+ * LEXIS — Complaint Filing Guide Specialist Agent (Module 9 Enhanced)
  *
- * WHERE TO FILE — shows the citizen the correct government authority,
- * portal, fee, and required documents for their complaint type.
+ * An autonomous specialist agent helping Indian citizens understand WHERE
+ * and HOW to file complaints, legal notices, and statutory petitions.
  *
- * TWO ENTRY MODES:
- * ────────────────
- * 1. HANDOFF from Document Drafter (Module 6):
- *    URL: /filing-guide?doc_type=rti_application&draft_id=abc-123
- *    → doc_type and draft_id are read from URL query params.
- *    → Backend reads doc_type from the draft record (no re-entry).
- *    → A "Carried from your RTI Application draft" banner is shown.
- *
- * 2. MANUAL LOOKUP (citizen arrives independently):
- *    URL: /filing-guide
- *    → Dropdown selector lets citizen choose document type.
- *    → Backend does a direct doc_type lookup.
- *
- * WHY THE HANDOFF MATTERS (beginner explanation):
- * ────────────────────────────────────────────────
- * Without handoff: the citizen has to describe their situation again in a
- * new tool. The system re-interprets natural language — it might classify
- * "rental deposit issue" as a consumer complaint instead of a legal notice.
- *
- * With handoff: the doc_type ("legal_notice") is authoritative structured
- * data from the drafting session. No re-interpretation, no risk of error.
+ * ARCHITECTURAL PATTERN:
+ *   - Conversational Natural Language Understanding
+ *   - Grounded in verified Indian statutory databases (RTI Act 2005, CPA 2019, etc.)
+ *   - Interactive multi-turn dialogue with follow-up Q&A
+ *   - Pecuniary jurisdiction calculation (District vs State vs National)
+ *   - Interactive document readiness checklists and step-by-step procedures
+ *   - Seamless handoff from Document Drafter (Module 6)
+ *   - Zero fabrication: only verified .gov.in / .nic.in portals
  * ──────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
+  getFilingGuide,
   lookupFilingAuthority,
   lookupFilingByDraftId,
-  getFilingAuthorities,
 } from '../services/api';
 import './FilingGuide.css';
 
-// Human-readable labels for each doc_type
-const DOC_TYPE_LABELS = {
-  rti_application: '🏛️ RTI Application',
-  consumer_complaint: '🛒 Consumer Complaint',
-  legal_notice: '⚖️ Legal Demand Notice',
-};
+// Markdown and inline token formatting helper for citizen readability
+function formatInlineTokens(line) {
+  const parts = [];
+  const regex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
+  let lastIdx = 0;
+  let match;
+
+  while ((match = regex.exec(line)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push(line.substring(lastIdx, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      parts.push(<strong key={match.index}>{token.slice(2, -2)}</strong>);
+    } else if (token.startsWith('[') && token.includes('](') && token.endsWith(')')) {
+      const closingBracket = token.indexOf('](');
+      const label = token.slice(1, closingBracket);
+      const url = token.slice(closingBracket + 2, -1);
+      parts.push(
+        <a key={match.index} href={url} target="_blank" rel="noopener noreferrer" className="inline-portal-link">
+          {label}
+        </a>
+      );
+    }
+    lastIdx = regex.lastIndex;
+  }
+
+  if (lastIdx < line.length) {
+    parts.push(line.substring(lastIdx));
+  }
+
+  return parts.length > 0 ? parts : line;
+}
+
+function renderFormattedText(text, hasGuide) {
+  if (!text) return null;
+  if (hasGuide && text.startsWith('### 📋 Filing Guide:')) {
+    return (
+      <div className="guide-intro-banner">
+        <span>📋</span> Procedural guidance, official submission portal, and document checklist:
+      </div>
+    );
+  }
+
+  const lines = text.split('\n');
+  return (
+    <div className="formatted-message-lines">
+      {lines.map((line, lIdx) => {
+        if (!line.trim()) {
+          return <div key={lIdx} className="line-spacer" />;
+        }
+        if (line.startsWith('### ')) {
+          return <h3 key={lIdx} className="formatted-h3">{line.replace('### ', '')}</h3>;
+        }
+        if (line.startsWith('## ')) {
+          return <h2 key={lIdx} className="formatted-h2">{line.replace('## ', '')}</h2>;
+        }
+        return (
+          <p key={lIdx} className="formatted-line">
+            {formatInlineTokens(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// Quick scenario prompts for common citizen filing needs
+const SCENARIO_PROMPTS = [
+  {
+    icon: '🏛️',
+    label: 'RTI for Road Work',
+    query: 'How do I file an RTI application for delayed road repair in my municipal ward?',
+  },
+  {
+    icon: '🛒',
+    label: 'Defective Product Refund',
+    query: 'I bought a defective laptop for ₹45,000 online and the seller refuses to refund. How do I file a consumer complaint?',
+  },
+  {
+    icon: '⚖️',
+    label: 'Unpaid Rental Deposit',
+    query: 'My landlord refuses to return my ₹60,000 security deposit after vacating. How do I send a legal demand notice?',
+  },
+  {
+    icon: '🚗',
+    label: 'High-Value Consumer Dispute',
+    query: 'I bought a car with manufacturing defects worth ₹65 Lakh in Pune, Maharashtra. Which consumer court has jurisdiction?',
+  },
+];
 
 function FilingGuide() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // ── URL params from Document Drafter handoff ───────────────────────────────
+  // URL query params for handoff from Document Drafter
   const draftId = searchParams.get('draft_id');
   const docTypeParam = searchParams.get('doc_type');
 
-  // ── Component state ────────────────────────────────────────────────────────
-  const [selectedDocType, setSelectedDocType] = useState(docTypeParam || '');
-  const [authorityRecord, setAuthorityRecord] = useState(null);
+  // Chat and interaction state
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [authorities, setAuthorities] = useState([]);   // For dropdown
-  const [isHandoff, setIsHandoff] = useState(false);    // True if arrived from drafter
+  const [activeGuide, setActiveGuide] = useState(null);
+  const [isHandoff, setIsHandoff] = useState(false);
+  const [checkedDocs, setCheckedDocs] = useState({});
+  const [selectedDocType, setSelectedDocType] = useState(docTypeParam || '');
 
-  // ── On mount: load available authority types + auto-lookup if handoff ──────
-  useEffect(() => {
-    loadAuthorities();
+  const chatEndRef = useRef(null);
 
-    if (draftId || docTypeParam) {
-      setIsHandoff(!!draftId);
-      handleLookup(draftId, docTypeParam);
-    }
-  }, []);
-
-  const loadAuthorities = async () => {
-    try {
-      const result = await getFilingAuthorities();
-      setAuthorities(result.data || []);
-    } catch {
-      // Non-critical — fallback hardcoded list shown instead
-      setAuthorities([
-        { doc_type: 'rti_application', doc_type_name: 'RTI Application' },
-        { doc_type: 'consumer_complaint', doc_type_name: 'Consumer Complaint' },
-        { doc_type: 'legal_notice', doc_type_name: 'Legal Demand Notice' },
-      ]);
-    }
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleLookup = async (dId, dType) => {
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading, activeGuide]);
+
+  // On mount: handle handoff if arriving from Document Drafter
+  useEffect(() => {
+    if (draftId || docTypeParam) {
+      setIsHandoff(!!draftId);
+      handleInitialHandoff(draftId, docTypeParam);
+    }
+  }, [draftId, docTypeParam]);
+
+  const handleInitialHandoff = async (dId, dType) => {
     setIsLoading(true);
     setErrorMsg('');
-    setAuthorityRecord(null);
-
     try {
-      let result;
-      if (dId) {
-        // Handoff path: backend reads doc_type from the draft record
-        result = await lookupFilingByDraftId(dId);
-      } else if (dType) {
-        // Direct lookup path
-        result = await lookupFilingAuthority(dType);
-      } else {
-        setErrorMsg('Please select a document type to look up.');
-        return;
-      }
+      const q = dType
+        ? `I have completed drafting my ${dType.replace('_', ' ')}. Please provide the complete filing guide and procedure.`
+        : 'Please provide the filing guide for my completed draft.';
 
-      if (result.data && result.data.found) {
-        setAuthorityRecord(result.data);
-        setSelectedDocType(result.data.doc_type);
-      } else {
-        setErrorMsg(
-          result.data?.message ||
-            'No filing authority found for this document type.'
-        );
+      const res = await getFilingGuide(q, [], dId, dType);
+      const data = res.data;
+
+      const userGreeting = {
+        sender: 'user',
+        text: dId
+          ? `Carried from Document Drafter (Draft: ${dType || 'Legal Document'})`
+          : `Looking up filing guide for ${dType ? dType.replace('_', ' ') : 'Legal Document'}`,
+        timestamp: new Date(),
+      };
+
+      const agentReply = {
+        sender: 'agent',
+        text: data.reply_text,
+        guide: data.guide,
+        intent: data.intent,
+        verified: data.verified,
+        sources: data.sources || [],
+        disclaimer: data.disclaimer,
+        timestamp: new Date(),
+      };
+
+      setMessages([userGreeting, agentReply]);
+      if (data.guide) {
+        setActiveGuide(data.guide);
       }
     } catch (err) {
-      setErrorMsg(
-        err.response?.data?.detail ||
-          'Failed to load filing authority. Please try again.'
-      );
+      console.error('Failed to load filing guide handoff:', err);
+      setErrorMsg(err.response?.data?.detail || 'Failed to load filing guide for this draft.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleManualLookup = (e) => {
-    e.preventDefault();
-    if (!selectedDocType) {
-      setErrorMsg('Please select a document type.');
-      return;
+  // Main message send handler
+  const handleSend = async (queryText) => {
+    const q = queryText || inputText;
+    if (!q || !q.trim() || isLoading) return;
+
+    const trimmed = q.trim();
+    const userMsg = { sender: 'user', text: trimmed, timestamp: new Date() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInputText('');
+    setIsLoading(true);
+    setErrorMsg('');
+
+    // Prepare conversation history context
+    const historyPayload = messages.map((m) => ({
+      sender: m.sender,
+      text: m.text,
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
+
+    try {
+      const res = await getFilingGuide(
+        trimmed,
+        historyPayload,
+        draftId,
+        activeGuide ? activeGuide.doc_type : docTypeParam
+      );
+      const data = res.data;
+
+      const agentMsg = {
+        sender: 'agent',
+        text: data.reply_text,
+        guide: data.guide,
+        intent: data.intent,
+        verified: data.verified,
+        sources: data.sources || [],
+        disclaimer: data.disclaimer,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, agentMsg]);
+      if (data.guide) {
+        setActiveGuide(data.guide);
+      }
+    } catch (err) {
+      console.error('Failed to execute filing query:', err);
+      const detail = err.response?.data?.detail || 'Failed to connect to Filing Guide Agent.';
+      setErrorMsg(detail);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'agent',
+          text: `⚠️ Error: ${detail}`,
+          status: 'error',
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
     }
-    setIsHandoff(false);
-    handleLookup(null, selectedDocType);
+  };
+
+  const handleDocumentCheck = (msgIndex, dIdx) => {
+    const key = `${msgIndex}-${dIdx}`;
+    setCheckedDocs((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleQuickCategorySelect = (docType) => {
+    setSelectedDocType(docType);
+    let q = '';
+    if (docType === 'rti_application') {
+      q = 'How do I file an RTI application under the Right to Information Act 2005?';
+    } else if (docType === 'consumer_complaint') {
+      q = 'How do I file a consumer complaint for deficiency in service or defective goods?';
+    } else if (docType === 'legal_notice') {
+      q = 'How do I serve a legal demand notice for tenant deposit or contractual default?';
+    }
+    handleSend(q);
   };
 
   const handleReset = () => {
-    setAuthorityRecord(null);
-    setSelectedDocType('');
+    setMessages([]);
+    setActiveGuide(null);
+    setInputText('');
     setErrorMsg('');
     setIsHandoff(false);
+    setCheckedDocs({});
+    setSelectedDocType('');
     navigate('/filing-guide');
   };
 
   return (
-    <div className="filing-container">
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="filing-header">
-        <div className="filing-title-area">
-          <span className="filing-icon">📋</span>
+    <div className="filing-page-container">
+      {/* ── Header Banner ─────────────────────────────────────────────────── */}
+      <div className="filing-header-banner">
+        <div className="filing-header-left">
+          <span className="filing-header-badge-icon">📋</span>
           <div>
-            <h1 className="filing-title">Complaint Filing Guide</h1>
-            <p className="filing-subtitle">
-              Find the correct government authority, portal, and documents to file your complaint
+            <h1 className="filing-header-title">Filing Guide Agent</h1>
+            <p className="filing-header-subtitle">
+              Autonomous procedural navigation for Indian courts, consumer commissions, and RTI authorities
             </p>
           </div>
         </div>
-        <span className="badge-filing">DB-Verified · No Fabrication</span>
+        <div className="filing-header-tags">
+          <span className="badge-verified-authority">🏛️ Verified Portals Only</span>
+          <span className="badge-no-hallucination">0 Fabrication</span>
+        </div>
       </div>
 
-      {/* ── Handoff Banner (from Document Drafter) ────────────────────────── */}
-      {isHandoff && authorityRecord && (
-        <div className="handoff-banner">
-          <span className="handoff-icon">🔗</span>
-          <div>
-            <strong>Carried from your {authorityRecord.doc_type_name} draft</strong>
-            <p>
-              Your document type was automatically recognised from the draft you just
-              completed — you don't need to re-enter anything.
-            </p>
+      {/* ── Handoff Banner (if carried from Document Drafter) ─────────────── */}
+      {isHandoff && (
+        <div className="drafter-handoff-banner">
+          <div className="handoff-content">
+            <span className="handoff-emoji">🔗</span>
+            <div>
+              <strong>Carried from your Document Drafter session</strong>
+              <p>Your document context has been linked automatically. You do not need to re-enter your dispute details.</p>
+            </div>
           </div>
-          <button className="btn-back-drafter" onClick={() => navigate('/document-drafter')}>
-            ← Back to Draft
+          <button
+            className="btn-back-to-draft"
+            onClick={() => navigate('/document-drafter')}
+          >
+            ← Return to Drafter
           </button>
         </div>
       )}
 
-      {/* ── Error message ──────────────────────────────────────────────────── */}
-      {errorMsg && <div className="filing-error-banner">⚠️ {errorMsg}</div>}
+      {/* ── Error Banner ──────────────────────────────────────────────────── */}
+      {errorMsg && <div className="filing-alert-banner">⚠️ {errorMsg}</div>}
 
-      {/* ── Manual Lookup Form (shown when no result yet) ─────────────────── */}
-      {!authorityRecord && !isLoading && (
-        <div className="lookup-form-section">
-          <h2>Select your document type</h2>
-          <p className="lookup-hint">
-            Choose the type of document you drafted. Filing authorities, portal links,
-            fees, and required documents are sourced from official Indian law — no invented
-            information is shown.
-          </p>
-          <form className="lookup-form" onSubmit={handleManualLookup}>
-            <div className="doc-type-cards">
-              {[
-                {
-                  id: 'rti_application',
-                  icon: '🏛️',
-                  label: 'RTI Application',
-                  desc: 'File with the PIO of the public authority under RTI Act 2005',
-                  portal: 'rtionline.gov.in',
-                },
-                {
-                  id: 'consumer_complaint',
-                  icon: '🛒',
-                  label: 'Consumer Complaint',
-                  desc: 'File with the Consumer Commission (District / State / National)',
-                  portal: 'edaakhil.nic.in',
-                },
-                {
-                  id: 'legal_notice',
-                  icon: '⚖️',
-                  label: 'Legal Demand Notice',
-                  desc: 'Serve directly to the opposite party (registered post / RPAD)',
-                  portal: 'No portal — direct service',
-                },
-              ].map((item) => (
-                <div
-                  key={item.id}
-                  id={`doc-type-card-${item.id}`}
-                  className={`doc-type-card ${selectedDocType === item.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedDocType(item.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && setSelectedDocType(item.id)}
-                  aria-pressed={selectedDocType === item.id}
+      {/* ── Empty State / Scenario Prompt Chips ───────────────────────────── */}
+      {messages.length === 0 && !isLoading && (
+        <div className="filing-empty-state">
+          <div className="empty-state-card">
+            <span className="empty-state-icon">⚖️</span>
+            <h2>Where and how do you need to file?</h2>
+            <p>
+              Ask any procedural question in natural language. The Filing Guide Agent will identify the
+              correct statutory authority, check pecuniary jurisdiction, and give you step-by-step submission steps.
+            </p>
+
+            <div className="scenario-chips-grid">
+              {SCENARIO_PROMPTS.map((item, idx) => (
+                <button
+                  key={idx}
+                  className="scenario-chip-btn"
+                  onClick={() => handleSend(item.query)}
+                  disabled={isLoading}
                 >
-                  <div className="doc-type-card-icon">{item.icon}</div>
-                  <h3>{item.label}</h3>
-                  <p>{item.desc}</p>
-                  <div className="doc-type-portal-hint">🔗 {item.portal}</div>
-                </div>
+                  <span className="chip-icon">{item.icon}</span>
+                  <div className="chip-text">
+                    <strong>{item.label}</strong>
+                    <span>{item.query}</span>
+                  </div>
+                </button>
               ))}
             </div>
-            <button
-              type="submit"
-              id="btn-lookup-filing"
-              className="btn-lookup"
-              disabled={!selectedDocType}
-            >
-              Find Filing Authority →
-            </button>
-          </form>
-        </div>
-      )}
 
-      {/* ── Loading State ─────────────────────────────────────────────────── */}
-      {isLoading && (
-        <div className="filing-loading">
-          <div className="loading-spinner" />
-          <p>Looking up verified filing authority…</p>
-        </div>
-      )}
+            <div className="direct-categories-wrapper">
+              <span className="categories-label">Or select a standard filing category:</span>
+              <div className="categories-buttons">
+                <button
+                  className="category-pill-btn"
+                  onClick={() => handleQuickCategorySelect('rti_application')}
+                >
+                  🏛️ RTI Application
+                </button>
+                <button
+                  className="category-pill-btn"
+                  onClick={() => handleQuickCategorySelect('consumer_complaint')}
+                >
+                  🛒 Consumer Complaint
+                </button>
+                <button
+                  className="category-pill-btn"
+                  onClick={() => handleQuickCategorySelect('legal_notice')}
+                >
+                  ⚖️ Legal Demand Notice
+                </button>
+              </div>
 
-      {/* ── Authority Result Card ─────────────────────────────────────────── */}
-      {authorityRecord && !isLoading && (
-        <div className="authority-result-section">
-          <div className="result-top-bar">
-            <button className="btn-reset" onClick={handleReset}>
-              ← Look up another
-            </button>
-            <div className="result-doc-type-badge">
-              {DOC_TYPE_LABELS[authorityRecord.doc_type] || authorityRecord.doc_type_name}
+              <div className="categories-dropdown-container">
+                <select
+                  id="select-doc-type"
+                  className="select-doc-type"
+                  value={selectedDocType}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) handleQuickCategorySelect(val);
+                  }}
+                >
+                  <option value="">-- Or choose from document dropdown --</option>
+                  <option value="rti_application">🏛️ RTI Application (Right to Information Act 2005)</option>
+                  <option value="consumer_complaint">🛒 Consumer Complaint (Consumer Protection Act 2019)</option>
+                  <option value="legal_notice">⚖️ Legal Demand Notice (Contract / Tenant / Cheque Bounce)</option>
+                </select>
+              </div>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Main authority card */}
-          <div className="authority-card">
-            <div className="authority-card-header">
-              <div>
-                <h2 className="authority-card-title">{authorityRecord.authority_name}</h2>
-                <p className="authority-card-short">{authorityRecord.authority_short}</p>
+      {/* ── Chat Messages Thread ─────────────────────────────────────────── */}
+      {messages.length > 0 && (
+        <div className="filing-chat-thread">
+          <div className="thread-actions-bar">
+            <button className="btn-new-filing-query" onClick={handleReset}>
+              ↺ Start New Filing Query
+            </button>
+          </div>
+
+          {messages.map((msg, index) => (
+            <div key={index} className={`chat-message-row ${msg.sender}`}>
+              <div className="message-sender-tag">
+                {msg.sender === 'user' ? 'You (Citizen)' : 'LEXIS Filing Guide Agent'}
               </div>
-              {authorityRecord.verified && (
-                <span className="verified-badge">✅ Verified</span>
-              )}
-            </div>
 
-            <p className="authority-description">{authorityRecord.description}</p>
+              <div className="chat-bubble">
+                <div className="bubble-text">{renderFormattedText(msg.text, !!msg.guide)}</div>
 
-            {/* Portal link */}
-            {authorityRecord.portal_url && (
-              <div className="portal-section">
-                <div className="section-label">🌐 Official Portal</div>
-                <a
-                  href={authorityRecord.portal_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="portal-link-btn"
-                  id="btn-visit-portal"
-                >
-                  {authorityRecord.portal_name} ↗
-                </a>
-                {authorityRecord.portal_scope && (
-                  <p className="portal-scope-note">{authorityRecord.portal_scope}</p>
-                )}
-              </div>
-            )}
-
-            {/* Filing tiers */}
-            {authorityRecord.filing_tiers && authorityRecord.filing_tiers.length > 0 && (
-              <div className="filing-tiers-section">
-                <div className="section-label">📊 Filing Tiers</div>
-                <div className="tiers-list">
-                  {authorityRecord.filing_tiers.map((tier, idx) => (
-                    <div key={idx} className="tier-card">
-                      <div className="tier-step">{idx + 1}</div>
-                      <div className="tier-content">
-                        <strong>{tier.name || tier.tier}</strong>
-                        <p>{tier.description}</p>
-                        {tier.deadline_to_respond && (
-                          <span className="tier-deadline">
-                            ⏱ Response: {tier.deadline_to_respond}
-                          </span>
+                {/* If this message contains a structured guide, render cards only on initial guide or modification */}
+                {msg.guide && (msg.intent === 'new_guide' || msg.intent === 'modify_guide' || !msg.intent) && (
+                  <div className="structured-guide-container">
+                    {/* 1. Authority & Overview Card */}
+                    <div className="guide-card authority-overview-card">
+                      <div className="guide-card-header">
+                        <div>
+                          <span className="card-badge">📌 Competent Authority</span>
+                          <h3 className="authority-heading">{msg.guide.authority_name}</h3>
+                          <span className="authority-short-tag">{msg.guide.authority_short}</span>
+                        </div>
+                        {msg.guide.verified && (
+                          <span className="verified-pill">✅ Verified Authority</span>
                         )}
-                        {tier.jurisdiction && (
-                          <span className="tier-jurisdiction">
-                            ⚖️ Jurisdiction: {tier.jurisdiction}
-                          </span>
+                      </div>
+
+                      <p className="guide-description">{msg.guide.description}</p>
+
+                      {/* Pecuniary Tier Badge (if calculated) */}
+                      {msg.guide.calculated_tier && (
+                        <div className="pecuniary-tier-callout">
+                          <span className="tier-tag">⚖️ {msg.guide.calculated_tier.short_name}</span>
+                          <p>
+                            <strong>Jurisdiction:</strong> {msg.guide.calculated_tier.jurisdiction_limit}
+                          </p>
+                          <small>{msg.guide.calculated_tier.where_to_file}</small>
+                        </div>
+                      )}
+
+                      {/* Filing Hierarchy & Appeal Tiers */}
+                      {msg.guide.filing_tiers && msg.guide.filing_tiers.length > 0 && !msg.guide.calculated_tier && (
+                        <div className="filing-tiers-overview-box">
+                          <span className="tier-overview-title">⚖️ Statutory Appeal & Jurisdictional Tiers:</span>
+                          <div className="tiers-grid">
+                            {msg.guide.filing_tiers.map((t, tIdx) => (
+                              <div key={tIdx} className="tier-mini-item">
+                                <span className="tier-mini-name">{t.name || `Tier ${t.tier}`}</span>
+                                {t.jurisdiction && <span className="tier-mini-limit">{t.jurisdiction}</span>}
+                                {t.deadline_to_respond && <span className="tier-mini-deadline">⏱ {t.deadline_to_respond}</span>}
+                                <p className="tier-mini-desc">{t.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Official Portal Action */}
+                      {msg.guide.portal_url && (
+                        <div className="portal-action-box">
+                          <div>
+                            <span className="portal-title">Official Government Portal</span>
+                            <span className="portal-scope">{msg.guide.portal_scope || 'Central & State filing system'}</span>
+                          </div>
+                          <a
+                            href={msg.guide.portal_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-portal-launch"
+                          >
+                            Open {msg.guide.portal_name} ↗
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 2. Eligibility & Prerequisites */}
+                    {msg.guide.eligibility_prerequisites && msg.guide.eligibility_prerequisites.length > 0 && (
+                      <div className="guide-card eligibility-card">
+                        <h4 className="card-subheading">📋 Eligibility & Prerequisites</h4>
+                        <ul className="bullet-list">
+                          {msg.guide.eligibility_prerequisites.map((p, pIdx) => (
+                            <li key={pIdx}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 3. Step-by-Step Filing Procedure */}
+                    {msg.guide.step_by_step_procedure && msg.guide.step_by_step_procedure.length > 0 && (
+                      <div className="guide-card procedure-card">
+                        <h4 className="card-subheading">🔢 Step-by-Step Filing Procedure</h4>
+                        <div className="procedure-timeline">
+                          {msg.guide.step_by_step_procedure.map((step, sIdx) => (
+                            <div key={sIdx} className="timeline-step-item">
+                              <div className="step-number-circle">{step.step_number || sIdx + 1}</div>
+                              <div className="step-body">
+                                <div className="step-top-line">
+                                  <strong>{step.title}</strong>
+                                  {step.timeline && <span className="step-timeline-tag">⏱ {step.timeline}</span>}
+                                </div>
+                                <p>{step.description}</p>
+                                {step.action_url && (
+                                  <a
+                                    href={step.action_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="step-action-link"
+                                  >
+                                    Visit Portal ↗
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 4. Required Documents Checklist (Interactive) */}
+                    {msg.guide.required_documents && msg.guide.required_documents.length > 0 && (
+                      <div className="guide-card checklist-card">
+                        <div className="checklist-header">
+                          <h4 className="card-subheading">📁 Required Documents Checklist</h4>
+                          <span className="checklist-hint">Check off items as you gather them</span>
+                        </div>
+                        <div className="interactive-checklist">
+                          {msg.guide.required_documents.map((doc, dIdx) => (
+                            <label
+                              key={dIdx}
+                              className={`checklist-item-label ${checkedDocs[`${index}-${dIdx}`] ? 'checked' : ''}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!checkedDocs[`${index}-${dIdx}`]}
+                                onChange={() => handleDocumentCheck(index, dIdx)}
+                              />
+                              <span className="custom-checkbox-box">{checkedDocs[`${index}-${dIdx}`] ? '✓' : ''}</span>
+                              <span className="checklist-text">{doc}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 5. Statutory Fees & Timelines Grid */}
+                    <div className="guide-grid-two-col">
+                      {/* Fees */}
+                      {msg.guide.fee && (
+                        <div className="guide-card fee-card">
+                          <h4 className="card-subheading">💰 Statutory Fees</h4>
+                          <div className="fee-details-list">
+                            {msg.guide.fee.amount_central && (
+                              <div className="fee-row">
+                                <span>Central Fee:</span>
+                                <strong>{msg.guide.fee.amount_central}</strong>
+                              </div>
+                            )}
+                            {msg.guide.fee.structure && (
+                              <div className="fee-row">
+                                <span>Structure:</span>
+                                <span>{msg.guide.fee.structure}</span>
+                              </div>
+                            )}
+                            {msg.guide.fee.fee_exemption && (
+                              <div className="fee-row fee-exemption">
+                                <span>Exemption:</span>
+                                <span>{msg.guide.fee.fee_exemption}</span>
+                              </div>
+                            )}
+                            {msg.guide.fee.state_fees && (
+                              <div className="fee-row fee-warning">
+                                <span>State Fees:</span>
+                                <span>
+                                  {msg.guide.fee.state_fees === 'needs_verification'
+                                    ? '⚠️ Varies by state — verify with state authority'
+                                    : msg.guide.fee.state_fees}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Fee schedule table for consumer commissions */}
+                          {msg.guide.fee.fee_schedule && msg.guide.fee.fee_schedule.length > 0 && (
+                            <div className="fee-schedule-table-box">
+                              <table className="mini-fee-table">
+                                <thead>
+                                  <tr>
+                                    <th>Claim Value</th>
+                                    <th>Fee</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {msg.guide.fee.fee_schedule.map((row, rIdx) => (
+                                    <tr key={rIdx}>
+                                      <td>Up to {row.claim_up_to}</td>
+                                      <td>{row.fee}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Deadlines & Timelines */}
+                      <div className="guide-card timeline-card">
+                        <h4 className="card-subheading">⏱ Statutory Timelines</h4>
+                        {msg.guide.response_timeline && (
+                          <div className="timeline-highlight-box">
+                            <strong>Official Response Period:</strong>
+                            <p>{msg.guide.response_timeline}</p>
+                          </div>
+                        )}
+                        {msg.guide.legal_basis && (
+                          <div className="legal-basis-box">
+                            <strong>Governing Statute:</strong>
+                            <p>{msg.guide.legal_basis}</p>
+                          </div>
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {/* Fee information */}
-            {authorityRecord.fee && (
-              <div className="fee-section">
-                <div className="section-label">💰 Fee</div>
-                <div className="fee-grid">
-                  {authorityRecord.fee.amount_central && (
-                    <div className="fee-item">
-                      <span className="fee-label">Central Govt fee:</span>
-                      <span className="fee-value">{authorityRecord.fee.amount_central}</span>
-                    </div>
-                  )}
-                  {authorityRecord.fee.structure && (
-                    <div className="fee-item">
-                      <span className="fee-label">Fee structure:</span>
-                      <span className="fee-value">{authorityRecord.fee.structure}</span>
-                    </div>
-                  )}
-                  {authorityRecord.fee.fee_exemption && (
-                    <div className="fee-item fee-exemption">
-                      <span className="fee-label">Exemption:</span>
-                      <span className="fee-value">{authorityRecord.fee.fee_exemption}</span>
-                    </div>
-                  )}
-                  {authorityRecord.fee.state_fees && (
-                    <div className="fee-item fee-note">
-                      <span className="fee-label">State fees:</span>
-                      <span className="fee-value">
-                        {authorityRecord.fee.state_fees === 'needs_verification'
-                          ? '⚠️ Varies by state — verify with your state authority'
-                          : authorityRecord.fee.state_fees}
-                      </span>
-                    </div>
-                  )}
-                  {authorityRecord.fee.court_filing_fee && (
-                    <div className="fee-item fee-note">
-                      <span className="fee-label">Court filing fee:</span>
-                      <span className="fee-value">
-                        {authorityRecord.fee.court_filing_fee === 'needs_verification'
-                          ? '⚠️ State-specific — verify with your local court or lawyer'
-                          : authorityRecord.fee.court_filing_fee}
-                      </span>
-                    </div>
-                  )}
-                  {authorityRecord.fee.source && (
-                    <div className="fee-source">Source: {authorityRecord.fee.source}</div>
-                  )}
-                </div>
+                    {/* 6. Common Mistakes to Avoid */}
+                    {msg.guide.common_mistakes && msg.guide.common_mistakes.length > 0 && (
+                      <div className="guide-card mistakes-card">
+                        <h4 className="card-subheading">⚠️ Common Mistakes to Avoid</h4>
+                        <ul className="mistakes-list">
+                          {msg.guide.common_mistakes.map((m, mIdx) => (
+                            <li key={mIdx}>{m}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-                {/* Fee schedule table for consumer complaints */}
-                {authorityRecord.fee.fee_schedule && authorityRecord.fee.fee_schedule.length > 0 && (
-                  <div className="fee-schedule">
-                    <div className="fee-schedule-title">Fee schedule (Consumer Protection Rules 2020):</div>
-                    <table className="fee-table">
-                      <thead>
-                        <tr>
-                          <th>Claim Amount</th>
-                          <th>Fee</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {authorityRecord.fee.fee_schedule.map((row, i) => (
-                          <tr key={i}>
-                            <td>Up to {row.claim_up_to}</td>
-                            <td>{row.fee}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    {/* 7. Legal Disclaimer Footer */}
+                    <div className="guide-disclaimer-footer">
+                      <p>{msg.disclaimer || 'Disclaimer: LEXIS provides verified procedural guidance and not legal advice.'}</p>
+                      {msg.guide.source_ref && (
+                        <span className="source-citation-line">
+                          Source: {msg.guide.source_ref} {msg.guide.last_verified ? `(Verified ${msg.guide.last_verified})` : ''}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Required documents checklist */}
-            {authorityRecord.required_documents && authorityRecord.required_documents.length > 0 && (
-              <div className="documents-section">
-                <div className="section-label">📁 Required Documents</div>
-                <ul className="documents-checklist">
-                  {authorityRecord.required_documents.map((doc, idx) => (
-                    <li key={idx} className="document-item">
-                      <span className="check-icon">☐</span>
-                      {doc}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Important notes */}
-            {authorityRecord.important_notes && authorityRecord.important_notes.length > 0 && (
-              <div className="notes-section">
-                <div className="section-label">📌 Important Notes</div>
-                <ul className="notes-list">
-                  {authorityRecord.important_notes.map((note, idx) => (
-                    <li key={idx}>{note}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Response timeline */}
-            {authorityRecord.response_timeline && (
-              <div className="timeline-section">
-                <div className="section-label">⏱ Response Timeline</div>
-                <p>{authorityRecord.response_timeline}</p>
-              </div>
-            )}
-
-            {/* Legal basis + source */}
-            <div className="legal-footer">
-              {authorityRecord.legal_basis && (
-                <div className="legal-basis">
-                  <span className="legal-label">Legal basis:</span> {authorityRecord.legal_basis}
-                </div>
-              )}
-              {authorityRecord.source_ref && (
-                <div className="source-ref">
-                  <span className="legal-label">Source:</span> {authorityRecord.source_ref}
-                </div>
-              )}
-              {authorityRecord.last_verified && (
-                <div className="last-verified">
-                  Data last verified: {authorityRecord.last_verified}
-                </div>
-              )}
             </div>
-          </div>
+          ))}
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="chat-message-row agent">
+              <div className="message-sender-tag">LEXIS Filing Guide Agent</div>
+              <div className="chat-bubble loading-bubble">
+                <div className="typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span className="loading-text">Analyzing filing requirements and jurisdiction rules…</span>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
         </div>
       )}
+
+      {/* ── Conversational Input Box (Always accessible) ──────────────────── */}
+      <div className="filing-input-container">
+        <form
+          className="filing-input-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+        >
+          <input
+            type="text"
+            className="filing-text-input"
+            placeholder={
+              messages.length === 0
+                ? 'Describe your dispute or where you need to file (e.g. consumer complaint for ₹40,000 in Mumbai)…'
+                : 'Ask a follow-up question (e.g. Do I need a lawyer? What is the deadline? Can I pay online?)…'
+            }
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            className="btn-send-filing-query"
+            disabled={!inputText.trim() || isLoading}
+          >
+            {isLoading ? 'Processing…' : 'Send →'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

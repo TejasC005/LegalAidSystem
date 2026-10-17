@@ -55,6 +55,73 @@
       "Information that would endanger national security or privacy of a third party may be withheld under Sections 8 and 9.",
       "If your PIO is in a central government ministry, use the RTI Online portal for fastest processing."
     ],
+    "eligibility_prerequisites": [
+      "Must be a Citizen of India (Section 3, Right to Information Act 2005).",
+      "Public authority must fall under the definition of Section 2(h) of the RTI Act.",
+      "Information sought must exist in material record format (documents, memos, emails, records, orders) and not fall under exemptions in Section 8 or 9."
+    ],
+    "step_by_step_procedure": [
+      {
+        "step_number": 1,
+        "title": "Identify Public Authority and PIO",
+        "description": "Determine the exact department, ministry, or public authority that holds the required records and locate their designated Public Information Officer (PIO/CPIO).",
+        "timeline": "Prior to drafting",
+        "action_url": "https://rtionline.gov.in"
+      },
+      {
+        "step_number": 2,
+        "title": "Draft Specific, Point-Wise Questions",
+        "description": "Write clear, numbered queries requesting specific documents or records. Avoid seeking opinions, interpretations, or legal justifications.",
+        "timeline": "Step 2"
+      },
+      {
+        "step_number": 3,
+        "title": "Pay the Statutory Application Fee",
+        "description": "Attach the ₹10 fee via IPO, demand draft, banker's cheque, or online payment. If Below Poverty Line (BPL), attach a valid BPL card copy for full fee exemption.",
+        "timeline": "At time of submission"
+      },
+      {
+        "step_number": 4,
+        "title": "Submit Application and Retain Tracking Proof",
+        "description": "Submit online via RTI Online portal (for central ministries) or send by Registered Post with Acknowledgement Due (RPAD) / Speed Post. Keep the postal receipt and tracking number.",
+        "timeline": "Submission Day 0",
+        "action_url": "https://rtionline.gov.in"
+      },
+      {
+        "step_number": 5,
+        "title": "Statutory Response Period",
+        "description": "PIO must provide information or reject with reasons within 30 days of receipt (within 48 hours if life and liberty of a person is involved).",
+        "timeline": "30 days (Section 7(1))"
+      },
+      {
+        "step_number": 6,
+        "title": "File First Appeal (if necessary)",
+        "description": "If no reply is received within 30 days or information is unsatisfactory, file a First Appeal with the First Appellate Authority (FAA) within 30 days.",
+        "timeline": "Within 30 days of PIO deadline"
+      },
+      {
+        "step_number": 7,
+        "title": "File Second Appeal with Information Commission",
+        "description": "If FAA fails to decide or gives an adverse order, file a Second Appeal with the Central Information Commission (CIC) or State Information Commission (SIC) within 90 days.",
+        "timeline": "Within 90 days of FAA decision",
+        "action_url": "https://cic.gov.in"
+      }
+    ],
+    "common_mistakes": [
+      "Asking questions seeking opinions, justifications ('Why did you...'), or legal advice instead of existing material records.",
+      "Submitting applications meant for State Government departments on the Central Government rtionline.gov.in portal.",
+      "Failing to retain the postal registration receipt, acknowledgment card, and a signed photocopy of the application.",
+      "Exceeding reasonable bounds with overly voluminous or 30-year-old unindexed requests.",
+      "Forgetting to enclose fee proof or attaching invalid non-statutory payment instruments."
+    ],
+    "checklist": [
+      "Application is clearly addressed to the Public Information Officer (PIO/CPIO)",
+      "Queries are numbered, factual, and request existing material records",
+      "Applicant name, postal address, and contact information are fully filled",
+      "Statutory fee of ₹10 attached (or BPL card copy enclosed for exemption)",
+      "Application is dated and signed by the citizen",
+      "Duplicate copy and postal/online acknowledgment preserved"
+    ],
     "source_ref": "Right to Information Act 2005 (Act 22 of 2005); RTI (Regulation of Fee and Cost) Rules 2005; CIC website cic.gov.in",
     "verified": true,
     "last_verified": "2026-08-26"
@@ -119,6 +186,72 @@
       "Mediation is mandatory at the first stage — the Commission will refer to mediation if both parties agree.",
       "Legal notice to the opposite party before filing is advisable but not mandatory."
     ],
+    "eligibility_prerequisites": [
+      "Must be a 'Consumer' under Section 2(7) of Consumer Protection Act 2019 (bought goods or hired services for personal use/consideration, not for resale or commercial purpose).",
+      "Must have an actionable grievance (defect in goods, deficiency in service, unfair trade practice, or misleading advertisement).",
+      "Filing must be within the 2-year statutory limitation period from the date the cause of action arose (Section 69)."
+    ],
+    "step_by_step_procedure": [
+      {
+        "step_number": 1,
+        "title": "Serve Informal Grievance or Legal Notice",
+        "description": "Send a formal notice or email to the seller/service provider stating the defect/deficiency and providing 15 days to resolve or refund.",
+        "timeline": "Day 0–15"
+      },
+      {
+        "step_number": 2,
+        "title": "Assemble Transaction and Defect Evidence",
+        "description": "Collect tax invoice, proof of payment, warranty card, product photos, job cards, service communications, and seller's rejection/silence.",
+        "timeline": "Before filing"
+      },
+      {
+        "step_number": 3,
+        "title": "Determine Pecuniary and Territorial Commission",
+        "description": "Calculate total value of goods/services paid plus compensation: District Commission (up to ₹50 Lakh), State Commission (₹50 Lakh to ₹2 Crore), National Commission (>₹2 Crore). File where you reside or where seller has office.",
+        "timeline": "Jurisdiction Check"
+      },
+      {
+        "step_number": 4,
+        "title": "Draft Complaint Petition and Verification Affidavit",
+        "description": "Draft petition with indexed chronology of events, clear prayer/relief sought, and an affidavit affirming the contents on oath.",
+        "timeline": "Preparation"
+      },
+      {
+        "step_number": 5,
+        "title": "Submit Online via e-Daakhil Portal or Offline",
+        "description": "Register on edaakhil.nic.in, upload complaint petition, supporting annexures, and pay the prescribed fee online. Physical filing at the Commission registry is also permitted.",
+        "timeline": "Filing Day",
+        "action_url": "https://edaakhil.nic.in"
+      },
+      {
+        "step_number": 6,
+        "title": "Admission and Notice to Opposite Party",
+        "description": "Commission examines admissibility within 21 days. Once admitted, notice is issued to the opposite party to submit a written reply within 30 days.",
+        "timeline": "21–30 days"
+      },
+      {
+        "step_number": 7,
+        "title": "Hearing or Mediation and Final Order",
+        "description": "Parties may opt for consumer mediation cell for speedy settlement. Otherwise, summary hearings proceed on affidavits without requiring lengthy court trials.",
+        "timeline": "Aimed within 3–5 months"
+      }
+    ],
+    "common_mistakes": [
+      "Filing after the 2-year limitation period without an application for condonation of delay explaining the cause.",
+      "Purchasing goods for commercial resale or industrial enterprise, which falls outside consumer court protection.",
+      "Filing in the incorrect commission tier by calculating only compensation rather than total value of goods/services plus compensation.",
+      "Omitting the manufacturer as a necessary party when defect is inherent to the product rather than dealer fault.",
+      "Failing to produce concrete documentary evidence (invoice, warranty, or written rejection)."
+    ],
+    "checklist": [
+      "Complaint petition with indexed list of dates and events",
+      "Signed and notarised verification affidavit",
+      "Original/copy of tax invoice or booking receipt",
+      "Proof of consideration paid (bank statement / UPI / card receipt)",
+      "Photographs / test reports / technical expert opinion of defect (if applicable)",
+      "Copy of notice sent to seller/service provider with proof of delivery",
+      "Proof of payment of statutory filing fee under 2020 Rules"
+    ],
     "source_ref": "Consumer Protection Act 2019, Sections 34–59; Consumer Protection (Consumer Disputes Redressal Commissions) Rules 2020; e-Daakhil portal edaakhil.nic.in",
     "verified": true,
     "last_verified": "2026-08-26"
@@ -169,6 +302,73 @@
       "Sending a notice via RPAD creates a legal presumption of service — keep the tracking proof.",
       "For landlord-tenant disputes: many states have Rent Control Acts with dedicated Rent Tribunals — check your state's rent law.",
       "Court fees for civil suits are state-specific and cannot be stated without knowing your state — consult your state court fee schedule or a local lawyer."
+    ],
+    "eligibility_prerequisites": [
+      "Any individual, citizen, or entity having an unfulfilled contractual obligation, tenancy violation, property dispute, or unpaid dues.",
+      "Clear legal grievance supported by written or material evidence (agreement, receipts, correspondence).",
+      "Exact name and identifiable address of the opposite party."
+    ],
+    "step_by_step_procedure": [
+      {
+        "step_number": 1,
+        "title": "Review Legal Grounds and Contract Terms",
+        "description": "Examine the underlying agreement (e.g. lease agreement, invoice, employment letter) and compute exact claim amount and interest if legally applicable.",
+        "timeline": "Before Drafting"
+      },
+      {
+        "step_number": 2,
+        "title": "Draft the Demand Notice with Clear Specifics",
+        "description": "Set out the facts chronologically, state the exact breach/default, specify the exact monetary demand or required action, and give a clear compliance period (typically 15 to 30 days).",
+        "timeline": "Drafting"
+      },
+      {
+        "step_number": 3,
+        "title": "Date and Execute the Notice",
+        "description": "Sign the notice. Retain an identical signed office copy along with all attached annexures and supporting documents.",
+        "timeline": "Execution"
+      },
+      {
+        "step_number": 4,
+        "title": "Dispatch via Registered Post (RPAD) or Speed Post",
+        "description": "Send the notice via India Post Registered Post with Acknowledgement Due (RPAD) or Speed Post with delivery tracking. You may also email a scanned copy concurrently.",
+        "timeline": "Dispatch Day",
+        "action_url": "https://www.indiapost.gov.in"
+      },
+      {
+        "step_number": 5,
+        "title": "Track Consignment and Archive Service Proof",
+        "description": "Download the official delivery confirmation from indiapost.gov.in and store the original postal receipt and signed green RPAD acknowledgment card securely in LEXIS Vault.",
+        "timeline": "3–7 days post-dispatch"
+      },
+      {
+        "step_number": 6,
+        "title": "Await Notice Expiry and Evaluate Response",
+        "description": "Allow the full statutory or specified notice period (e.g. 15 or 30 days) from the date of confirmed delivery for the opposite party to comply or respond.",
+        "timeline": "15–30 days from delivery"
+      },
+      {
+        "step_number": 7,
+        "title": "Initiate Litigation (if unresolved)",
+        "description": "If the demand is rejected or ignored, proceed to file a civil suit in the competent Civil Court or file an application before the relevant Rent/Labour Tribunal.",
+        "timeline": "Post Notice Period",
+        "action_url": "https://services.ecourts.gov.in"
+      }
+    ],
+    "common_mistakes": [
+      "Sending only by regular unrecorded post or instant messenger without retaining legally admissible proof of delivery.",
+      "Using aggressive, defamatory, or criminal threats in a matter that is purely civil or contractual.",
+      "Failing to specify a definitive deadline for compliance or quoting ambiguous, unsubstantiated claim amounts.",
+      "Failing to preserve the postal booking receipt, postal tracking printout, and signed RPAD card.",
+      "Overlooking specific statutory notice periods (e.g., Section 80 CPC requires mandatory 2-month notice before suing Government; Section 138 NI Act requires 15-day notice within 30 days of memo)."
+    ],
+    "checklist": [
+      "Notice is legibly addressed to the full legal name and current address of opposite party",
+      "Chronological statement of facts and legal basis clearly articulated",
+      "Specific demand (remedy/sum) clearly stated",
+      "Clear time period for compliance specified (15, 30, or 60 days)",
+      "Notice dated and signed by sender or legal representative",
+      "Dispatched via India Post RPAD / Speed Post with postal receipt securely preserved",
+      "Delivery tracking report downloaded and stored"
     ],
     "source_ref": "Transfer of Property Act 1882; Indian Contract Act 1872; Code of Civil Procedure 1908; Court Fees Act 1870",
     "verified": true,
