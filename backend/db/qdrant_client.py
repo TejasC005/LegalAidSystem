@@ -18,10 +18,20 @@ from core.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+_shared_in_memory_client: Optional[QdrantClient] = None
+
+
+def reset_in_memory_client() -> None:
+    """Resets the shared in-memory Qdrant client (useful in test teardown)."""
+    global _shared_in_memory_client
+    _shared_in_memory_client = None
+
+
 def get_qdrant_client(
     force_in_memory: bool = False,
     override_host: Optional[str] = None,
     override_port: Optional[int] = None,
+    new_instance: bool = False,
 ) -> QdrantClient:
     """
     Returns an initialized QdrantClient instance.
@@ -31,10 +41,19 @@ def get_qdrant_client(
       2. Otherwise, attempts to connect to the configured Qdrant server host/port.
       3. If connection fails or host is unreachable, falls back to in-memory mode
          so the application and test suite continue seamlessly without crashing.
+      4. In-memory clients are shared within the process so that collections seeded
+         at startup or in services are accessible across all agents.
     """
+    global _shared_in_memory_client
+
     if force_in_memory:
-        logger.info("Initializing in-memory Qdrant client (:memory:)")
-        return QdrantClient(location=":memory:")
+        if new_instance or _shared_in_memory_client is None:
+            logger.info("Initializing in-memory Qdrant client (:memory:)")
+            client = QdrantClient(location=":memory:")
+            if not new_instance:
+                _shared_in_memory_client = client
+            return client
+        return _shared_in_memory_client
 
     settings = get_settings()
     host = override_host or settings.QDRANT_HOST
@@ -45,7 +64,7 @@ def get_qdrant_client(
             host=host,
             port=port,
             api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
-            timeout=5.0,
+            timeout=5,
         )
         # Test connection with health check call
         client.get_collections()
@@ -59,7 +78,9 @@ def get_qdrant_client(
             port,
             exc,
         )
-        return QdrantClient(location=":memory:")
+        if new_instance or _shared_in_memory_client is None:
+            _shared_in_memory_client = QdrantClient(location=":memory:")
+        return _shared_in_memory_client
 
 
 def init_qdrant_collection(

@@ -12,9 +12,11 @@ All auth endpoints live under /api/v1/auth/
   GET  /auth/admin-only     →  Example admin-only route (role guard demo)
 """
 
+
 import logging
 import uuid
 from datetime import datetime
+from typing import Dict, Any
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -23,6 +25,7 @@ from jose import JWTError
 from api.dependencies.auth import get_current_user, require_role
 from api.middleware.rate_limit import otp_rate_limit
 from models.user import (
+    AdminLoginRequest,
     AnonymousTokenResponse,
     RefreshRequest,
     SendOTPRequest,
@@ -44,13 +47,19 @@ from services.auth.email_provider import get_email_provider
 from services.auth.otp_provider import DevLogOTPProvider
 from services.auth.otp_service import send_otp, verify_otp, send_email_otp, verify_email_otp
 
-logger = logging.getLogger(__name__)
+import os
+from pwdlib import PasswordHash
+from dotenv import load_dotenv
 
+logger = logging.getLogger(__name__)
+from pathlib import Path
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Use the dev stub provider — swap this for a real provider before production
 _otp_provider = DevLogOTPProvider()
-
+_password_hash = PasswordHash.recommended()
 
 # ── POST /auth/send-otp ───────────────────────────────────────────────────────
 
@@ -141,7 +150,7 @@ async def verify_otp_endpoint(body: VerifyOTPRequest, request: Request):
     if existing:
         user_id = str(existing["_id"])
         role = existing.get("role", UserRole.USER.value)
-        update_fields = {"updated_at": now}
+        update_fields: Dict[str, Any] = {"updated_at": now}
         if body.email:
             update_fields["email"] = body.email.lower().strip()
             update_fields["email_verified"] = True
@@ -357,9 +366,56 @@ async def get_me(
         created_at=doc["created_at"],
     )
 
+# admin post endpoint
+
+@router.post("/admin/login", summary="Admin email/password login")
+async def admin_login(body: AdminLoginRequest, request: Request):
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    admin_password_hash = os.getenv("ADMIN_PASSWORD_HASH", "")
+
+    if not admin_email or not admin_password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Admin login is not configured.",
+        )
+
+    email = str(body.email).strip().lower()
+    password_valid = _password_hash.verify(
+        body.password, admin_password_hash
+    )
+
+    if email != admin_email or not password_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+
+    db = request.app.state.mongo_client[request.app.state.mongo_db_name]
+    admin_user = await db["users"].find_one({
+        "email": admin_email,
+        "role": "admin",
+        "is_active": {"$ne": False},
+    })
+
+    if not admin_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No active admin account is configured in the database.",
+        )
+
+    user_id = str(admin_user["_id"])
+    access_token = create_access_token(user_id, "admin")
+    refresh_token = create_refresh_token(user_id, "admin")
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "role": "admin",
+    }
+
 
 # ── GET /auth/admin-only — role guard example ─────────────────────────────────
-
 @router.get(
     "/admin-only",
     summary="Admin-only endpoint (demonstrates require_role guard)",

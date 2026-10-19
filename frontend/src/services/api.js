@@ -167,7 +167,9 @@ export function getMe() {
  * @returns {Promise}     Resolves with QueryResponse { query, final_response, status, intents, scratchpad }
  */
 export function sendQuery(query) {
-  return api.post('/api/v1/query', { query });
+  return api.post('/api/v1/query', { query }, {
+    timeout: 60000, // 60s - multi-agent graph with RAG retrieval and LLM synthesis
+  });
 }
 
 /**
@@ -297,6 +299,24 @@ export async function getScamPatterns() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Module 9: Interactive conversational filing guide and follow-up Q&A.
+ *
+ * @param {string} query Citizen's filing query or follow-up question
+ * @param {Array} conversationHistory Prior conversation turns [{sender, text}]
+ * @param {string|null} draftId Optional draft UUID carried from Document Drafter handoff
+ * @param {string|null} docType Optional explicit document type
+ * @returns {Promise} Resolves with { reply_text, guide, intent, doc_type, verified, sources, disclaimer }
+ */
+export function getFilingGuide(query, conversationHistory = [], draftId = null, docType = null) {
+  return api.post('/api/v1/filing/guide', {
+    query,
+    conversation_history: conversationHistory,
+    draft_id: draftId,
+    doc_type: docType,
+  });
+}
+
+/**
  * Module 9: Look up the filing authority for a given document type.
  *
  * DIRECT LOOKUP PATH:
@@ -394,6 +414,66 @@ export function reactivateUser(userId) {
  */
 export function getModerationQueue(limit = 50) {
   return api.get('/api/v1/admin/moderation/queue', { params: { limit } });
+}
+
+/**
+ * Upload an official legal document (.pdf, .docx, .json) to the Knowledge Base.
+ * @param {FormData} formData
+ * @param {Function} [onUploadProgress]
+ */
+export function uploadKnowledgeBaseDocument(formData, onUploadProgress) {
+  return api.post('/api/v1/admin/knowledge-base/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress,
+    timeout: 120000,
+  });
+}
+
+/**
+ * List all knowledge base documents for admin.
+ */
+export function getKnowledgeBaseDocuments() {
+  return api.get('/api/v1/admin/knowledge-base/documents');
+}
+
+/**
+ * Get full document details including text preview and chunks.
+ * @param {string} documentId
+ */
+export function getKnowledgeBaseDocument(documentId) {
+  return api.get(`/api/v1/admin/knowledge-base/documents/${documentId}`);
+}
+
+/**
+ * Activate a legal document and index into Qdrant.
+ * @param {string} documentId
+ */
+export function activateKnowledgeBaseDocument(documentId) {
+  return api.post(`/api/v1/admin/knowledge-base/documents/${documentId}/activate`);
+}
+
+/**
+ * Deactivate a legal document and remove vectors from Qdrant.
+ * @param {string} documentId
+ */
+export function deactivateKnowledgeBaseDocument(documentId) {
+  return api.post(`/api/v1/admin/knowledge-base/documents/${documentId}/deactivate`);
+}
+
+/**
+ * Permanently delete a legal document and its vectors.
+ * @param {string} documentId
+ */
+export function deleteKnowledgeBaseDocument(documentId) {
+  return api.delete(`/api/v1/admin/knowledge-base/documents/${documentId}`);
+}
+
+/**
+ * Reprocess a stored legal document from disk.
+ * @param {string} documentId
+ */
+export function reprocessKnowledgeBaseDocument(documentId) {
+  return api.post(`/api/v1/admin/knowledge-base/documents/${documentId}/reprocess`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

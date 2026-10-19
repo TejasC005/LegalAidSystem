@@ -80,7 +80,7 @@ export function AuthProvider({ children }) {
   // Parameters:
   //   tokens  : { access_token, refresh_token } from the backend response
   //   userObj : the user profile we got from /auth/me (or we build a minimal one)
-  function login(tokens, userObj) {
+  function login(tokens, userObj, redirectTo = '/') {
     const { access_token, refresh_token } = tokens;
 
     // 1. Save to localStorage so the session survives a page refresh.
@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
     setUser(userObj);
 
     // 3. Navigate to the dashboard.
-    navigate('/');
+    navigate(redirectTo);
   }
 
 

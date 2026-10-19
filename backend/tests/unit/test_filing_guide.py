@@ -463,3 +463,395 @@ class TestOrchestratorRouting:
         print(f"  Portal: {metadata.get('portal_url')}")
         print(f"  LLM calls used: {llm_calls} (must be 0 — template formatting)")
         print(f"  Verified: {metadata.get('verified')}")
+
+
+# =============================================================================
+# Test 6 — Conversational Filing Guide Engine (Module 9 Enhanced)
+# =============================================================================
+
+class TestConversationalFilingGuide:
+    """
+    Tests the natural-language conversational capabilities of the Filing Guide Agent:
+      1. Insufficient information detection & clarification prompts
+      2. Full structured guide generation
+      3. Pecuniary jurisdiction calculation (Consumer Protection Act 2019)
+      4. Follow-up Q&A context preservation
+      5. State jurisdiction detection
+      6. Unsupported filing categories
+      7. Anti-hallucination portal validation
+    """
+
+    @pytest.mark.asyncio
+    async def test_conversational_insufficient_info(self):
+        """Vague query returns insufficient_info intent with clarifying questions."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        res = await agent.process_conversation(query="I want to file a case")
+
+        assert res["intent"] == "insufficient_info", f"Expected 'insufficient_info', got '{res['intent']}'"
+        assert res["guide"] is None
+        assert "dispute" in res["reply_text"].lower()
+        assert "amount" in res["reply_text"].lower()
+        assert "state" in res["reply_text"].lower()
+        assert res["disclaimer"], "Must include statutory disclaimer"
+
+    @pytest.mark.asyncio
+    async def test_conversational_new_guide_generation(self):
+        """Detailed RTI query generates a complete structured guide."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        res = await agent.process_conversation(query="How do I file an RTI application for delayed road repairs in my municipal ward?")
+
+        assert res["intent"] == "new_guide"
+        assert res["doc_type"] == "rti_application"
+        assert res["guide"] is not None
+
+        guide = res["guide"]
+        assert guide["portal_url"] == "https://rtionline.gov.in"
+        assert len(guide["required_documents"]) >= 3
+        assert len(guide["step_by_step_procedure"]) >= 5
+        assert len(guide["common_mistakes"]) >= 3
+        assert len(guide["checklist"]) >= 3
+        assert "right to information act" in guide["legal_basis"].lower()
+
+    @pytest.mark.asyncio
+    async def test_pecuniary_jurisdiction_calculation(self):
+        """Consumer claims must be accurately routed to District, State, or National commission."""
+        from agents.filing_guide.catalog import get_filing_catalog
+        catalog = get_filing_catalog()
+
+        # Under 50 Lakh -> District Commission (DCDRC)
+        tier_district = catalog.calculate_consumer_pecuniary_tier(50_000)
+        assert "District" in tier_district["tier_name"]
+        assert "50 Lakh" in tier_district["jurisdiction_limit"]
+
+        tier_district_exact = catalog.calculate_consumer_pecuniary_tier(5_000_000)
+        assert "District" in tier_district_exact["tier_name"]
+
+        # Between 50 Lakh and 2 Crore -> State Commission (SCDRC)
+        tier_state = catalog.calculate_consumer_pecuniary_tier(7_500_000)  # 75 Lakh
+        assert "State" in tier_state["tier_name"]
+        assert "2 Crore" in tier_state["jurisdiction_limit"]
+
+        # Above 2 Crore -> National Commission (NCDRC)
+        tier_national = catalog.calculate_consumer_pecuniary_tier(30_000_000)  # 3 Crore
+        assert "National" in tier_national["tier_name"]
+
+    @pytest.mark.asyncio
+    async def test_consumer_guide_with_pecuniary_amount(self):
+        """Consumer complaint query with explicit amount calculates tier in guide object."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        res = await agent.process_conversation(query="I bought a defective car for Rs. 75 Lakh in Mumbai and dealer refuses refund. How do I file?")
+
+        assert res["doc_type"] == "consumer_complaint"
+        guide = res["guide"]
+        assert guide is not None
+        assert guide["calculated_tier"] is not None
+        assert "State Commission" in guide["calculated_tier"]["short_name"]
+        assert guide["state_jurisdiction"] == "Maharashtra"
+        assert guide["portal_url"] == "https://edaakhil.nic.in"
+
+    @pytest.mark.asyncio
+    async def test_followup_question_handling(self):
+        """Follow-up questions preserve previous guide context."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        history = [
+            {"sender": "user", "text": "How do I file a consumer complaint for a defective refrigerator?"},
+            {"sender": "agent", "text": "Filing Guide: Consumer Complaint with Consumer Disputes Redressal Commission."}
+        ]
+        res = await agent.process_conversation(
+            query="Do I need to hire an advocate to file this?",
+            conversation_history=history
+        )
+
+        assert res["intent"] == "followup"
+        assert res["doc_type"] == "consumer_complaint"
+        assert "not required to hire an advocate" in res["reply_text"].lower() or "lawyer" in res["reply_text"].lower()
+
+    @pytest.mark.asyncio
+    async def test_anti_hallucination_portals(self):
+        """All portal URLs in the catalog must be verified .gov.in or .nic.in domains."""
+        from agents.filing_guide.catalog import get_filing_catalog
+        catalog = get_filing_catalog()
+
+        for authority in catalog.get_all_authorities():
+            portal_url = authority.get("portal_url")
+            if portal_url:
+                assert ".gov.in" in portal_url or ".nic.in" in portal_url, (
+                    f"Authority {authority.get('id')} has unverified domain: {portal_url}"
+                )
+            assert authority.get("verified") is True, f"Authority {authority.get('id')} not marked verified"
+
+
+# =============================================================================
+# Test 7 — Filing Guide API Route Tests (POST /api/v1/filing/guide)
+# =============================================================================
+
+from fastapi.testclient import TestClient
+from fastapi import FastAPI, APIRouter
+from api.routes.filing import router as filing_router
+from services.auth.jwt_service import create_access_token
+
+def build_test_filing_app() -> FastAPI:
+    app = FastAPI()
+    api_v1 = APIRouter(prefix="/api/v1")
+    api_v1.include_router(filing_router)
+    app.include_router(api_v1)
+
+    # Mock DB state
+    mock_db = MagicMock()
+    mock_db.user_drafts = MagicMock()
+    mock_db.user_drafts.find_one = AsyncMock(return_value=None)
+    mock_db.filing_authorities = MagicMock()
+    app.state.mongo_client = MagicMock()
+    app.state.mongo_client.__getitem__ = MagicMock(return_value=mock_db)
+    app.state.mongo_db_name = "lexis"
+    return app
+
+
+class TestFilingApiEndpoints:
+    """Tests the REST API routes for Filing Guide."""
+
+    def test_post_filing_guide_success(self):
+        """POST /api/v1/filing/guide with valid JWT returns 200 and structured response."""
+        app = build_test_filing_app()
+        client = TestClient(app)
+
+        token = create_access_token(user_id="user_123", role="user")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        payload = {
+            "query": "How do I file an RTI application for delayed road repairs?",
+            "conversation_history": []
+        }
+        resp = client.post("/api/v1/filing/guide", json=payload, headers=headers)
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+
+        data = resp.json()
+        assert "reply_text" in data
+        assert data["intent"] == "new_guide"
+        assert data["doc_type"] == "rti_application"
+        assert data["guide"] is not None
+        assert data["guide"]["portal_url"] == "https://rtionline.gov.in"
+        assert data["verified"] is True
+        assert len(data["guide"]["step_by_step_procedure"]) > 0
+
+    def test_post_filing_guide_unauthorized(self):
+        """POST /api/v1/filing/guide without token returns 401 Unauthorized."""
+        app = build_test_filing_app()
+        client = TestClient(app)
+
+        payload = {"query": "How do I file an RTI?"}
+        resp = client.post("/api/v1/filing/guide", json=payload)
+        assert resp.status_code == 401
+
+    def test_post_filing_guide_empty_query_rejected(self):
+        """POST /api/v1/filing/guide with empty query returns 422 Unprocessable Entity."""
+        app = build_test_filing_app()
+        client = TestClient(app)
+
+        token = create_access_token(user_id="user_123", role="user")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        payload = {"query": ""}
+        resp = client.post("/api/v1/filing/guide", json=payload, headers=headers)
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_unmatched_query_graceful_insufficient_info(self):
+        """Queries longer than 4 words without recognized doc_type must not crash."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        res = await agent.process_conversation(
+            "Can you tell me how to file a complaint against someone who cheated me?"
+        )
+        assert res["intent"] == "insufficient_info"
+        assert res["guide"] is None
+        assert "needs_verification" in res["reply_text"]
+        assert res["verified"] is True
+
+    @pytest.mark.asyncio
+    async def test_lookup_authority_with_none_or_empty(self):
+        """Calling lookup_authority with None or invalid type must not raise AttributeError."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        res_none = await agent.lookup_authority(None)
+        assert res_none.found is False
+
+        res_empty = await agent.lookup_authority("")
+        assert res_empty.found is False
+
+    @pytest.mark.asyncio
+    async def test_confirmation_agent_validates_insufficient_info(self):
+        """Filing guide text from explain_for_query must pass Confirmation Agent validation."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        from agents.confirmation_agent.criteria import validate_filing_output
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        # 1. Vague query
+        text, meta, _ = await agent.explain_for_query("I want to file a case")
+        val = validate_filing_output(text, meta)
+        assert val.passed is True, f"Failed validation: {val.failure_reason}"
+
+        # 2. Specific query
+        text2, meta2, _ = await agent.explain_for_query("How do I file an RTI application?")
+        val2 = validate_filing_output(text2, meta2)
+        assert val2.passed is True, f"Failed validation: {val2.failure_reason}"
+
+    def test_expanded_keywords_mapping(self):
+        """Newly supported everyday citizen dispute keywords must map to correct category."""
+        from agents.filing_guide.catalog import get_filing_catalog
+        catalog = get_filing_catalog()
+
+        assert catalog.infer_doc_type("I have an issue with electricity meter and power supply") == "consumer_complaint"
+        assert catalog.infer_doc_type("Company is withholding my unpaid salary dues") == "legal_notice"
+        assert catalog.infer_doc_type("Need municipal records and tender copy") == "rti_application"
+        assert catalog.infer_doc_type("flight cancellation and airline refund") == "consumer_complaint"
+        assert catalog.infer_doc_type("dishonour of cheque under section 138") == "legal_notice"
+        assert catalog.infer_doc_type("file rti for public grievance record") == "rti_application"
+
+    def test_trailing_currency_extraction(self):
+        """Tests that trailing currency designations (rs, rupees, inr) are accurately extracted."""
+        from agents.filing_guide.catalog import get_filing_catalog
+        catalog = get_filing_catalog()
+
+        assert catalog.extract_monetary_amount("claim amount is 45000 rs") == 45000.0
+        assert catalog.extract_monetary_amount("dispute value of 50000 rupees") == 50000.0
+        assert catalog.extract_monetary_amount("refund of 500 inr") == 500.0
+        assert catalog.extract_monetary_amount("worth 1.5 crore") == 15_000_000.0
+        assert catalog.extract_monetary_amount("deposit of 75 lakhs") == 7_500_000.0
+
+    def test_expanded_city_to_state_mapping(self):
+        """Tests that newly mapped commercial cities correctly resolve to their state."""
+        from agents.filing_guide.catalog import get_filing_catalog
+        catalog = get_filing_catalog()
+
+        assert catalog.extract_jurisdiction_state("filed in Navi Mumbai") == "Maharashtra"
+        assert catalog.extract_jurisdiction_state("dispute in Visakhapatnam") == "Andhra Pradesh"
+        assert catalog.extract_jurisdiction_state("supplier in Vadodara") == "Gujarat"
+        assert catalog.extract_jurisdiction_state("factory in Ludhiana") == "Punjab"
+        assert catalog.extract_jurisdiction_state("resident of Agra") == "Uttar Pradesh"
+        assert catalog.extract_jurisdiction_state("order placed in Kozhikode") == "Kerala"
+        assert catalog.extract_jurisdiction_state("branch in Raipur") == "Chhattisgarh"
+        assert catalog.extract_jurisdiction_state("hotel in Shimla") == "Himachal Pradesh"
+        assert catalog.extract_jurisdiction_state("transport in Srinagar") == "Jammu and Kashmir"
+
+    def test_post_filing_guide_with_draft_handoff(self):
+        """POST /api/v1/filing/guide automatically extracts doc_type and collected_answers from draft."""
+        app = build_test_filing_app()
+        client = TestClient(app)
+
+        token = create_access_token(user_id="user_abc", role="user")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        mock_draft = {
+            "draft_id": "draft-consumer-999",
+            "user_id": "user_abc",
+            "doc_type": "consumer_complaint",
+            "doc_type_name": "Consumer Complaint",
+            "collected_answers": {
+                "compensation_amount": "7500000",
+                "city": "Mumbai"
+            }
+        }
+
+        # Configure mock_db to return this draft for user_abc
+        async def mock_find_draft(query):
+            if query.get("draft_id") == "draft-consumer-999" and query.get("user_id") == "user_abc":
+                return mock_draft
+            return None
+
+        app.state.mongo_client.__getitem__.return_value.user_drafts.find_one = AsyncMock(side_effect=mock_find_draft)
+
+        payload = {
+            "query": "Where do I submit this completed complaint?",
+            "draft_id": "draft-consumer-999"
+        }
+        resp = client.post("/api/v1/filing/guide", json=payload, headers=headers)
+        assert resp.status_code == 200, f"Expected 200, got: {resp.text}"
+
+        data = resp.json()
+        assert data["doc_type"] == "consumer_complaint"
+        guide = data["guide"]
+        assert guide is not None
+        assert guide["calculated_tier"] is not None
+        assert "State Commission" in guide["calculated_tier"]["short_name"]
+        assert guide["state_jurisdiction"] == "Maharashtra"
+        assert guide["portal_url"] == "https://edaakhil.nic.in"
+
+    def test_post_filing_guide_unauthorized_draft_access_denied(self):
+        """POST /api/v1/filing/guide with draft owned by another user returns 404."""
+        app = build_test_filing_app()
+        client = TestClient(app)
+
+        # Attacker token
+        token_attacker = create_access_token(user_id="attacker_user", role="user")
+        headers = {"Authorization": f"Bearer {token_attacker}"}
+
+        # Mock DB returns None for attacker
+        app.state.mongo_client.__getitem__.return_value.user_drafts.find_one = AsyncMock(return_value=None)
+
+        payload = {
+            "query": "Give me filing guide for draft",
+            "draft_id": "victim-draft-id"
+        }
+        resp = client.post("/api/v1/filing/guide", json=payload, headers=headers)
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_followup_deadlines_and_documentation(self):
+        """Follow-up questions regarding deadlines and required documents return focused statutory answers."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        history = [
+            {"sender": "user", "text": "How do I file a consumer complaint for a defective car?"},
+            {"sender": "agent", "text": "Filing Guide: Consumer Complaint with District Consumer Commission."}
+        ]
+
+        # 1. Ask about deadline/limitation
+        res_deadline = await agent.process_conversation(
+            query="What is the deadline or limitation period to file?",
+            conversation_history=history
+        )
+        assert res_deadline["intent"] == "followup"
+        assert "limitation period" in res_deadline["reply_text"].lower() or "2 years" in res_deadline["reply_text"].lower()
+
+        # 2. Ask about documents
+        res_docs = await agent.process_conversation(
+            query="What key documents and proof do I need to attach?",
+            conversation_history=history
+        )
+        assert res_docs["intent"] == "followup"
+        assert "invoice" in res_docs["reply_text"].lower() or "documents" in res_docs["reply_text"].lower()
+
+    @pytest.mark.asyncio
+    async def test_confirmation_agent_validates_unsupported_category(self):
+        """Unsupported category responses must still pass Confirmation Agent validation."""
+        from agents.filing_guide.agent import FilingGuideAgent, reset_filing_agent
+        from agents.confirmation_agent.criteria import validate_filing_output
+        reset_filing_agent()
+
+        agent = FilingGuideAgent(mongo_db=None)
+        text, meta, _ = await agent.explain_for_query("How do I file a petition for patent invalidation?")
+        val = validate_filing_output(text, meta)
+        assert val.passed is True, f"Validation failed: {val.failure_reason}"
+
+
+
