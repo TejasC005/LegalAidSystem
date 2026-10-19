@@ -696,3 +696,388 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Tab Switcher ────────────────────────────────────────────────────────── */
+.scam-tab-switcher {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  background: #e2e8f0;
+  padding: 0.35rem;
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.scam-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.scam-tab-btn:hover {
+  color: #1e293b;
+}
+
+.scam-tab-btn.active {
+  background: #ffffff;
+  color: var(--color-primary-dark, #134e42);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Dropzone & Upload Styles ─────────────────────────────────────────────── */
+.scam-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+}
+
+.scam-dropzone:hover,
+.scam-dropzone.is-dragging {
+  border-color: var(--color-primary, #1a6b5a);
+  background: #f0fdf4;
+}
+
+.scam-hidden-file-input {
+  display: none;
+}
+
+.scam-dropzone-icon {
+  color: var(--color-primary, #1a6b5a);
+  margin-bottom: 0.75rem;
+}
+
+.scam-dropzone h4 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.scam-dropzone p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.scam-selected-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.scam-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.scam-file-icon {
+  color: var(--color-primary, #1a6b5a);
+}
+
+.scam-file-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #1e293b;
+  display: block;
+}
+
+.scam-file-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.scam-remove-file-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #ef4444;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scam-remove-file-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.scam-file-note-box {
+  margin-bottom: 1.25rem;
+}
+
+.scam-file-note-box label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.4rem;
+}
+
+.scam-file-note-box input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  outline: none;
+  background: #ffffff;
+}
+
+.scam-file-note-box input:focus {
+  border-color: var(--color-primary, #1a6b5a);
+}
+
+/* ── Indicators Panel ─────────────────────────────────────────────────────── */
+.scam-indicators-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.scam-indicators-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.scam-indicator-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.scam-indicator-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.scam-indicator-pill.danger {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.scam-indicator-pill.warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.scam-indicator-pill.info {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+/* ── Outcome Banner ───────────────────────────────────────────────────────── */
+.scam-result-wrapper {
+  margin-top: 2rem;
+}
+
+.scam-outcome-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+}
+
+.scam-outcome-banner.danger {
+  background: #fff1f2;
+  border: 1.5px solid #fecdd3;
+  color: #9f1239;
+}
+
+.scam-outcome-banner.warning {
+  background: #fffbeb;
+  border: 1.5px solid #fef08a;
+  color: #92400e;
+}
+
+.scam-outcome-banner.neutral {
+  background: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+  color: #166534;
+}
+
+.scam-outcome-icon-box {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.scam-outcome-badge-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.scam-outcome-badge {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.scam-risk-badge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+}
+
+.scam-risk-badge.CRITICAL {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.scam-risk-badge.HIGH {
+  background: #ea580c;
+  color: #ffffff;
+}
+
+.scam-risk-badge.MEDIUM {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.scam-risk-badge.LOW {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.scam-confidence-badge {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.scam-outcome-text h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* ── Candidate Notice ─────────────────────────────────────────────────────── */
+.scam-candidate-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #1e40af;
+  margin-bottom: 1.5rem;
+}
+
+.scam-candidate-alert p {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: #1e3a8a;
+  line-height: 1.5;
+}
+
+/* ── Guidance Card ────────────────────────────────────────────────────────── */
+.scam-guidance-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+
+.scam-guidance-card h4 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.scam-guidance-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.scam-guidance-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.guidance-check {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.scam-emergency-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.scam-emergency-footer strong {
+  color: #dc2626;
+  font-size: 0.95rem;
+}
+
+.scam-emergency-footer p {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+

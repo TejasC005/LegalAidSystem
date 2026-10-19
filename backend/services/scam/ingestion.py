@@ -184,11 +184,41 @@ async def seed_scam_patterns_mongo(mongo_db, json_file_path: Path = None) -> int
 
     collection = mongo_db["scam_patterns"]
     count = 0
+    from datetime import timezone
+
+    now_iso = datetime.now(timezone.utc).isoformat()
 
     for pattern in patterns:
+        doc = dict(pattern)
+        doc.setdefault("status", "verified")
+        doc.setdefault("is_active", True)
+        doc.setdefault("report_count", 1)
+        doc.setdefault("version", "1.0")
+        doc.setdefault("provenance", "seed")
+        doc.setdefault("first_observed", now_iso)
+        doc.setdefault("last_observed", now_iso)
+        doc.setdefault("created_at", now_iso)
+        doc.setdefault("updated_at", now_iso)
+        if "category" not in doc:
+            p_name = doc.get("name", "").lower()
+            if "arrest" in p_name:
+                doc["category"] = "Digital Arrest"
+            elif any(w in p_name for w in ["cbi", "officer", "police", "customs", "courier"]):
+                doc["category"] = "Impersonation"
+            elif any(w in p_name for w in ["upi", "qr", "payment"]):
+                doc["category"] = "Payment/UPI"
+            elif any(w in p_name for w in ["kyc", "aadhaar", "sim"]):
+                doc["category"] = "KYC/Identity"
+            elif "job" in p_name:
+                doc["category"] = "Job/Employment"
+            elif any(w in p_name for w in ["crypto", "invest", "stock"]):
+                doc["category"] = "Investment"
+            else:
+                doc["category"] = "Other"
+
         await collection.update_one(
             {"id": pattern["id"]},
-            {"$set": pattern},
+            {"$set": doc},
             upsert=True,
         )
         count += 1

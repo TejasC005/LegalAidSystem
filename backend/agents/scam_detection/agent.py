@@ -186,7 +186,12 @@ class ScamDetectionAgent:
             with open(SCAM_SEED_FILE, "r", encoding="utf-8") as f:
                 patterns = json.load(f)
 
+            self._pattern_cache.clear()
+            self._keyword_map.clear()
+
             for p in patterns:
+                if not p.get("is_active", True) or p.get("status") == "deactivated":
+                    continue
                 pid = p["id"]
                 self._pattern_cache[pid] = p
                 for kw in p.get("keywords", []):
@@ -209,6 +214,61 @@ class ScamDetectionAgent:
             )
         except Exception as exc:
             logger.error("Failed to load scam pattern cache: %s", exc)
+
+    def reload_intelligence(self) -> None:
+        """
+        Invalidates and reloads the in-memory pattern cache and keyword map.
+        Called dynamically when an administrator creates, edits, activates,
+        or deactivates a scam intelligence record.
+        """
+        self._load_pattern_cache()
+        logger.info("ScamDetectionAgent: Intelligence cache reloaded dynamically.")
+
+    async def sync_intelligence_from_mongo(self) -> int:
+        """
+        Asynchronously synchronizes the agent's in-memory keyword map and cache
+        from active MongoDB `scam_patterns` records.
+        """
+        if self.mongo_db is None:
+            self._load_pattern_cache()
+            return len(self._pattern_cache)
+
+        try:
+            cursor = self.mongo_db["scam_patterns"].find(
+                {"is_active": {"$ne": False}, "status": {"$ne": "deactivated"}},
+                {"_id": 0}
+            )
+            active_patterns = await cursor.to_list(length=500)
+            if not active_patterns:
+                self._load_pattern_cache()
+                return len(self._pattern_cache)
+
+            self._pattern_cache.clear()
+            self._keyword_map.clear()
+
+            for p in active_patterns:
+                pid = p["id"]
+                self._pattern_cache[pid] = p
+                for kw in p.get("keywords", []):
+                    kw_clean = kw.strip()
+                    if not kw_clean:
+                        continue
+                    tokens = [re.escape(w) for w in kw_clean.split() if w.strip()]
+                    if len(tokens) == 1:
+                        pattern_str = r'\b' + tokens[0] + r'\b'
+                    else:
+                        pattern_str = r'\b' + r'(?:\s+\w+){0,2}\s+'.join(tokens) + r'\b'
+                    self._keyword_map.append((pattern_str, pid))
+
+            logger.info(
+                "ScamDetectionAgent: Synchronized %d active patterns from MongoDB into cache.",
+                len(self._pattern_cache),
+            )
+            return len(self._pattern_cache)
+        except Exception as exc:
+            logger.warning("Could not sync patterns from MongoDB, using seed file: %s", exc)
+            self._load_pattern_cache()
+            return len(self._pattern_cache)
 
     # =========================================================================
     # Layer 1 — Keyword Matching
@@ -303,6 +363,9 @@ class ScamDetectionAgent:
                     {"id": pattern_id}, {"_id": 0}
                 )
                 if doc:
+                    if not doc.get("is_active", True) or doc.get("status") == "deactivated":
+                        logger.info("ScamDetectionAgent: Pattern '%s' is inactive/deactivated in DB.", pattern_id)
+                        return None
                     return doc
                 logger.warning(
                     "ScamDetectionAgent: Pattern '%s' not found in MongoDB — "
@@ -318,7 +381,10 @@ class ScamDetectionAgent:
                 )
 
         # Fallback: in-memory cache (seeded from JSON on startup)
-        return self._pattern_cache.get(pattern_id)
+        cached = self._pattern_cache.get(pattern_id)
+        if cached and (not cached.get("is_active", True) or cached.get("status") == "deactivated"):
+            return None
+        return cached
 
     # =========================================================================
     # Main Detection Method
