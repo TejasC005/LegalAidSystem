@@ -29,11 +29,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
 from api.dependencies.auth import get_current_user
 from db.database import get_database
+from models.scam_intelligence import ScamAnalysisUploadResponse, ScamAnalysisOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -271,3 +272,95 @@ async def list_scam_patterns(
     ]
 
     return ScamPatternsResponse(total=len(summaries), patterns=summaries)
+
+
+# =============================================================================
+# POST /api/v1/scam/analyze-upload — Citizen document & media analysis endpoint
+# =============================================================================
+
+@router.post(
+    "/analyze-upload",
+    response_model=ScamAnalysisUploadResponse,
+    summary="Analyze suspicious document, image, or message for scams",
+    description=(
+        "Citizen endpoint for scam document intelligence analysis. "
+        "Accepts uploaded PDF, DOCX, TXT, JSON, PNG, JPG, JPEG, WEBP files or pasted text. "
+        "Extracts indicators (threats, impersonation, UPIs, URLs, OTP demands), "
+        "compares against verified intelligence, and flags novel techniques for review."
+    ),
+    status_code=status.HTTP_200_OK,
+)
+async def analyze_scam_upload(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    text: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    from services.scam.upload_analyzer import ScamUploadParser, ScamUploadValidationError
+    from services.scam.intelligence_service import ScamIntelligenceService
+    from models.scam_intelligence import ScamAnalysisUploadResponse, ScamAnalysisOutcome
+
+    user_id = current_user.get("sub", "anonymous")
+    extracted_text = ""
+    file_name = None
+    file_type = None
+    file_size = None
+    content_source = "pasted_text"
+
+    if file is not None and file.filename:
+        try:
+            file_bytes = await file.read()
+            file_name = file.filename
+            file_size = len(file_bytes)
+            content_type = file.content_type or ""
+
+            # Validate & extract text
+            normalized_type = ScamUploadParser.validate_file(file_bytes, file_name, content_type)
+            file_type = normalized_type
+            content_source = "file_upload"
+            extracted_text = ScamUploadParser.extract_text_content(file_bytes, normalized_type, content_type)
+        except ScamUploadValidationError as val_err:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(val_err),
+            )
+        except Exception as exc:
+            logger.error("Failed to parse citizen scam upload: %s", exc, exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Could not extract readable text from '{file_name}': {exc}",
+            )
+
+    # If pasted text is also provided, append/use it
+    if text and text.strip():
+        if extracted_text:
+            extracted_text = f"{extracted_text}\n\n[Citizen Note]: {text.strip()}"
+        else:
+            extracted_text = text.strip()
+            content_source = "pasted_text"
+
+    if not extracted_text or len(extracted_text.strip()) < 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide a valid document or paste suspicious text (minimum 5 characters).",
+        )
+
+    try:
+        service = ScamIntelligenceService(mongo_db=db)
+        response = await service.analyze_content(
+            raw_text=extracted_text,
+            content_source=content_source,
+            file_name=file_name,
+            file_type=file_type,
+            file_size_bytes=file_size,
+            user_id=user_id,
+        )
+        return response
+    except Exception as exc:
+        logger.error("Scam upload analysis failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while analyzing the document for scam indicators.",
+        )
+

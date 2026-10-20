@@ -122,6 +122,39 @@ async def lifespan(app: FastAPI):
     app.state.mongo_db_name = settings.MONGODB_DB_NAME
     app.state.redis = redis_client
 
+    # 4b. Synchronize configured admin account in MongoDB
+    try:
+        import os
+        from datetime import timezone
+        from bson import ObjectId
+        from models.user import UserRole
+        admin_email = (os.getenv("ADMIN_EMAIL", "") or "").strip().lower()
+        if admin_email:
+            mongo_db = mongo_client[settings.MONGODB_DB_NAME]
+            existing_admin = await mongo_db["users"].find_one({"email": admin_email})
+            if existing_admin:
+                if existing_admin.get("role") != UserRole.ADMIN.value or not existing_admin.get("is_active", True):
+                    await mongo_db["users"].update_one(
+                        {"_id": existing_admin["_id"]},
+                        {"$set": {"role": UserRole.ADMIN.value, "is_active": True, "updated_at": datetime.now(timezone.utc)}}
+                    )
+                    logger.info("Synchronized existing admin account in MongoDB: %s", admin_email)
+            else:
+                now = datetime.now(timezone.utc)
+                await mongo_db["users"].insert_one({
+                    "_id": ObjectId(),
+                    "email": admin_email,
+                    "role": UserRole.ADMIN.value,
+                    "is_active": True,
+                    "is_anonymous": False,
+                    "email_verified": True,
+                    "created_at": now,
+                    "updated_at": now,
+                })
+                logger.info("Created configured admin account in MongoDB: %s", admin_email)
+    except Exception as exc:
+        logger.warning("Could not synchronize admin account in MongoDB at startup: %s", exc)
+
     # 5. Start the Vault Deadline Scheduler (Module 10)
     # APScheduler fires daily at 09:00 to check deadlines and send proactive reminders.
     # If APScheduler is not installed, a warning is logged and the app starts normally.
@@ -267,6 +300,10 @@ def create_app() -> FastAPI:
     # Module 12: admin router registered under /api/v1/admin/
     from api.routes.admin import router as admin_router
     api_v1.include_router(admin_router)
+
+    # Admin Scam Intelligence Knowledge Base registered under /api/v1/admin/scam-intelligence/
+    from api.routes.admin_scam import router as admin_scam_router
+    api_v1.include_router(admin_scam_router)
 
     # Module 13: lawyer router registered under /api/v1/lawyer/
     # Scaffold only — no functional features. Role guard: require_role(["lawyer"]).

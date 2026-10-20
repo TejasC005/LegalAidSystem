@@ -553,16 +553,16 @@ Ensure verified government portals are highlighted, required documents and step-
         # Fee
         fee = record.get("fee", {})
         if fee:
-            output_lines.append("**Fee:**")
+            lines.append("**Fee:**")
             for k, v in fee.items():
                 if k == "source" or not v:
                     continue
                 label = k.replace("_", " ").title()
                 if isinstance(v, list):
-                    output_lines.append(f"  - {label}: {', '.join(str(i) for i in v)}")
+                    lines.append(f"  - {label}: {', '.join(str(i) for i in v)}")
                 else:
-                    output_lines.append(f"  - {label}: {v}")
-            output_lines.append("")
+                    lines.append(f"  - {label}: {v}")
+            lines.append("")
 
         # Documents
         required_docs = record.get("required_documents", [])

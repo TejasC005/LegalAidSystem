@@ -294,6 +294,21 @@ export async function getScamPatterns() {
   return response.data;
 }
 
+/**
+ * Citizen document, image, or structured JSON upload for scam intelligence analysis.
+ * @param {FormData} formData
+ * @param {Function} [onUploadProgress]
+ * @returns {Promise<object>}
+ */
+export async function analyzeScamUpload(formData, onUploadProgress) {
+  const response = await api.post('/api/v1/scam/analyze-upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress,
+    timeout: 120000,
+  });
+  return response.data;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Module 9 — Complaint Filing Guide Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -474,6 +489,64 @@ export function deleteKnowledgeBaseDocument(documentId) {
  */
 export function reprocessKnowledgeBaseDocument(documentId) {
   return api.post(`/api/v1/admin/knowledge-base/documents/${documentId}/reprocess`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin Scam Intelligence Knowledge Base Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function getAdminScamAnalytics() {
+  return api.get('/api/v1/admin/scam-intelligence/analytics');
+}
+
+export function getAdminScamPatterns(params = {}) {
+  return api.get('/api/v1/admin/scam-intelligence/patterns', { params });
+}
+
+export function getAdminScamPattern(patternId) {
+  return api.get(`/api/v1/admin/scam-intelligence/patterns/${patternId}`);
+}
+
+export function createAdminScamPattern(data) {
+  return api.post('/api/v1/admin/scam-intelligence/patterns', data);
+}
+
+export function updateAdminScamPattern(patternId, data) {
+  return api.patch(`/api/v1/admin/scam-intelligence/patterns/${patternId}`, data);
+}
+
+export function activateAdminScamPattern(patternId) {
+  return api.post(`/api/v1/admin/scam-intelligence/patterns/${patternId}/activate`);
+}
+
+export function deactivateAdminScamPattern(patternId) {
+  return api.post(`/api/v1/admin/scam-intelligence/patterns/${patternId}/deactivate`);
+}
+
+export function deleteAdminScamPattern(patternId) {
+  return api.delete(`/api/v1/admin/scam-intelligence/patterns/${patternId}`);
+}
+
+export function getAdminScamReviewQueue(status = 'candidate', skip = 0, limit = 50) {
+  return api.get('/api/v1/admin/scam-intelligence/review-queue', {
+    params: { status, skip, limit },
+  });
+}
+
+export function approveAdminScamCandidate(candidateId, data) {
+  return api.post(`/api/v1/admin/scam-intelligence/review-queue/${candidateId}/approve`, data);
+}
+
+export function rejectAdminScamCandidate(candidateId, data) {
+  return api.post(`/api/v1/admin/scam-intelligence/review-queue/${candidateId}/reject`, data);
+}
+
+export function mergeAdminScamCandidate(candidateId, data) {
+  return api.post(`/api/v1/admin/scam-intelligence/review-queue/${candidateId}/merge`, data);
+}
+
+export function getAdminScamSubmissions(skip = 0, limit = 50) {
+  return api.get('/api/v1/admin/scam-intelligence/submissions', { params: { skip, limit } });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
