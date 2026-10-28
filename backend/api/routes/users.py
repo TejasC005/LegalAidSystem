@@ -406,7 +406,7 @@ async def export_user_data_endpoint(
 
     return UserExportResponse(
         user_id=user_id,
-        phone=user_doc["phone"],
+        phone=user_doc.get("phone"),
         email=user_doc.get("email"),
         email_verified=user_doc.get("email_verified", False),
         created_at=str(user_doc.get("created_at")),

@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import JWTError
 
 from api.dependencies.auth import get_current_user, require_role
-from api.middleware.rate_limit import otp_rate_limit
+from api.middleware.rate_limit import otp_rate_limit, admin_login_rate_limit
 from models.user import (
     AdminLoginRequest,
     AnonymousTokenResponse,
@@ -368,7 +368,11 @@ async def get_me(
 
 # admin post endpoint
 
-@router.post("/admin/login", summary="Admin email/password login")
+@router.post(
+    "/admin/login",
+    summary="Admin email/password login",
+    dependencies=[Depends(admin_login_rate_limit)],
+)
 async def admin_login(body: AdminLoginRequest, request: Request):
     email = str(body.email).strip().lower()
     db = request.app.state.mongo_client[request.app.state.mongo_db_name]

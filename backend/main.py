@@ -267,6 +267,31 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # ── Security headers middleware ───────────────────────────────────────
+    from security.api_hardening import SecurityHeadersMiddleware
+    application.add_middleware(SecurityHeadersMiddleware, is_production=settings.is_production)
+
+    # ── Sanitized unhandled exception handler ─────────────────────────────
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    from fastapi.exceptions import RequestValidationError
+    from starlette.responses import JSONResponse
+
+    @application.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        if isinstance(exc, (StarletteHTTPException, RequestValidationError)):
+            raise exc
+        logger.error(
+            "Unhandled server exception on %s %s: %s",
+            request.method,
+            request.url.path,
+            exc,
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "An internal server error occurred. Please try again later."},
+        )
+
     # ── Versioned API router ──────────────────────────────────────────────
     # All routes live under /api/v1 — add future routers here
     from fastapi import APIRouter

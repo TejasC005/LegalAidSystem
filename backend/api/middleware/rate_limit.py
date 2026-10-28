@@ -87,3 +87,44 @@ async def otp_rate_limit(request: Request) -> None:
             ),
             headers={"Retry-After": str(settings.OTP_RATE_LIMIT_WINDOW_SECONDS)},
         )
+
+
+async def admin_login_rate_limit(request: Request) -> None:
+    """
+    FastAPI dependency: enforces brute-force rate limiting for admin credential login.
+    Limits to 5 attempts per 60 seconds per email/IP.
+    """
+    try:
+        body = await request.json()
+        target = (body.get("email") or "").strip().lower()
+    except Exception:
+        target = ""
+
+    if not target:
+        target = request.client.host if request.client else "unknown"
+
+    redis = getattr(request.app.state, "redis", None)
+    if not redis:
+        return
+
+    redis_key = f"rl:admin:login:{target}"
+    try:
+        current_count = await redis.incr(redis_key)
+        if current_count == 1:
+            await redis.expire(redis_key, 60)
+
+        if current_count > 5:
+            logger.warning(
+                "Admin login rate limit exceeded",
+                extra={"target": target, "count": current_count},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many admin login attempts. Please wait 60 seconds before trying again.",
+                headers={"Retry-After": "60"},
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Admin login rate limit check encountered an issue: %s", exc)
+

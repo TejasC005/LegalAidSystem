@@ -1221,10 +1221,19 @@ PROTECTED_CORE_COLLECTIONS = {
 }
 
 
+SENSITIVE_REDACT_KEYS = {"password_hash", "password"}
+
+
 def _serialize_mongo_doc(doc: Any) -> Any:
-    """Helper to convert MongoDB documents into standard JSON-serializable types."""
+    """Helper to convert MongoDB documents into standard JSON-serializable types and mask secrets."""
     if isinstance(doc, dict):
-        return {k: _serialize_mongo_doc(v) for k, v in doc.items()}
+        serialized = {}
+        for k, v in doc.items():
+            if k in SENSITIVE_REDACT_KEYS:
+                serialized[k] = "[REDACTED]"
+            else:
+                serialized[k] = _serialize_mongo_doc(v)
+        return serialized
     if isinstance(doc, list):
         return [_serialize_mongo_doc(item) for item in doc]
     if isinstance(doc, ObjectId):

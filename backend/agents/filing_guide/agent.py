@@ -567,10 +567,10 @@ Ensure verified government portals are highlighted, required documents and step-
         # Documents
         required_docs = record.get("required_documents", [])
         if required_docs:
-            output_lines.append("**Documents Required:**")
+            lines.append("**Documents Required:**")
             for doc in required_docs:
-                output_lines.append(f"  - {doc}")
-            output_lines.append("")
+                lines.append(f"  - {doc}")
+            lines.append("")
 
         # Legal basis
         if record.get("legal_basis"):
