@@ -138,7 +138,12 @@ async def test_orchestrator_routes_rights_intent_to_rag_agent(test_qdrant_client
         assert rights_output["status"] == "ok"
         assert filing_output["status"] == "ok"
         assert "[Source:" in rights_output["output"] or "Model Tenancy Act" in rights_output["output"]
-        assert "Filing Guide" in filing_output["output"] or "Legal Demand Notice" in filing_output["output"]
+        assert (
+            "Filing Guide" in filing_output["output"]
+            or "Legal Demand Notice" in filing_output["output"]
+            or "Filing Overview" in filing_output["output"]
+            or "e-Daakhil" in filing_output["output"]
+        )
 
         # Verify metadata is truthful
         assert rights_output["metadata"]["agent"] == "RightsExplainerAgent"

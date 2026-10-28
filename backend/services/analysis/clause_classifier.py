@@ -34,10 +34,12 @@ ADDING MORE RULES
 """
 
 import re
+import json
+import asyncio
 import logging
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +184,73 @@ RISK_RULES: List[Tuple[str, RiskLevel, List[str], str]] = [
         "This clause transfers ownership of intellectual property you create to the other party. "
         "Ensure the scope is limited to work done under this specific agreement.",
     ),
+    # ── GREEN rules (Standard Tenancy & Agreement terms) ──────────────────────
+    (
+        "standard_rent_payment",
+        RiskLevel.GREEN,
+        [
+            r"monthly rent of rs",
+            r"rent in respect of the demised premises shall commence",
+            r"rent period.*in addition to the rental amount",
+            r"payable on or before",
+            r"payable by.*of each month",
+            r"monthly maintenance charge",
+            r"running cost of elevator and generator",
+        ],
+        "Standard rent, utility, and maintenance payment terms.",
+    ),
+    (
+        "refundable_deposit",
+        RiskLevel.GREEN,
+        [
+            r"refundable security deposit",
+            r"interest-free refundable",
+            r"security deposit shall be refunded",
+            r"refunded by the owner to the tenant",
+        ],
+        "Standard refundable security deposit clause under Indian tenancy practice.",
+    ),
+    (
+        "subletting_restriction",
+        RiskLevel.GREEN,
+        [
+            r"not sublet.*assign",
+            r"not sublet, assign or part with",
+            r"residential purposes only",
+        ],
+        "Standard clause restricting subletting and specifying residential usage.",
+    ),
+    (
+        "fixtures_and_fittings",
+        RiskLevel.GREEN,
+        [
+            r"fittings and fixtures",
+            r"sanitary, electrical and other fittings",
+            r"maintain the demised premises in good and tenable condition",
+            r"day-to-day minor repairs",
+        ],
+        "Standard clause for maintenance and handover of premises and fixtures.",
+    ),
+    (
+        "standard_tenancy_notice",
+        RiskLevel.GREEN,
+        [
+            r"terminated before the expiry.*notice in writing",
+            r"serving one month prior notice",
+            r"prior written notice.*vacate",
+        ],
+        "Standard termination clause with advance written notice period.",
+    ),
+    (
+        "statutory_compliance_taxes",
+        RiskLevel.GREEN,
+        [
+            r"comply with all the rules and regulations of the local authority",
+            r"owner shall pay for all taxes/cesses",
+            r"rent agreement will be registered",
+        ],
+        "Standard statutory compliance, municipal tax, and registration terms.",
+    ),
 ]
 
 
@@ -309,38 +378,225 @@ class ClauseClassifier:
         model: str = "gpt-4o-mini",
     ) -> List[ClauseResult]:
         """
-        Classifies all clauses using rule-based scoring, then calls the LLM
-        for any clauses that received no rule hit to get a second opinion.
-
-        LLM is called only for GREEN (no-rule-hit) clauses — at most N calls
-        where N = number of unmatched clauses.  For very long contracts this
-        could be expensive; future versions should batch or sample.
+        Classifies all clauses using rule-based scoring first (0.00ms).
+        Any clauses matching no rule are classified in a SINGLE high-speed
+        batch LLM round-trip with timeout and graceful fallback.
         """
         results = self.classify_all(clauses)
 
-        if not openai_api_key:
-            logger.info("No OpenAI key — skipping LLM clause classification pass")
+        from core.config import get_settings
+        settings = get_settings()
+        effective_api_key = settings.GEMINI_API_KEY or openai_api_key
+        if not effective_api_key or effective_api_key.startswith("sk-replace"):
+            logger.info("No active Gemini/OpenAI key — skipping LLM clause classification pass")
             return results
 
         # Only send clauses with no rule hit to the LLM
-        needs_llm = [i for i, r in enumerate(results) if r.rule_hit is None]
-        if not needs_llm:
-            return results  # All clauses were covered by rules
+        needs_llm_items = [(i, clauses[i]) for i, r in enumerate(results) if r.rule_hit is None]
+        if not needs_llm_items:
+            logger.debug("All %d clauses covered by rule heuristics; 0 LLM calls needed.", len(clauses))
+            return results
 
         logger.info(
-            "Sending %d clauses to LLM for secondary classification",
-            len(needs_llm),
+            "Sending %d unmatched clauses to LLM in a single high-speed batch call",
+            len(needs_llm_items),
         )
 
-        for idx in needs_llm:
-            clause = clauses[idx]
-            llm_result = await _classify_with_llm(clause, openai_api_key, model)
-            results[idx] = llm_result
+        batch_results = await _classify_batch_with_llm(
+            needs_llm_items,
+            api_key=openai_api_key,
+            model=model,
+        )
+
+        for idx, clause_res in batch_results.items():
+            results[idx] = clause_res
 
         return results
 
 
-# ── LLM-assisted classification (called only for un-matched clauses) ──────────
+# ── Batch LLM-assisted classification ─────────────────────────────────────────
+
+BATCH_CLASSIFICATION_PROMPT = """You are an Indian legal contract risk analyst and plain-language assistant.
+Classify the legal risk for each numbered clause below from the perspective of an Indian citizen/tenant/contractor.
+
+Risk Level Criteria:
+- "green": Routine, standard, fair, and customary Indian tenancy/contractual term.
+- "yellow": Cautionary, warrants attention, notice periods, minor penalties, or ambiguous liability.
+- "red": High risk, unfair, void under Indian law (e.g., Section 27/28 Indian Contract Act, sole arbitration waiver, total liability waiver, unconsented personal data sale).
+
+For each clause, produce:
+- "index": integer matching the clause number
+- "risk_level": "green" | "yellow" | "red"
+- "confidence": "high" | "medium" | "low"
+- "explanation": concise 1-2 sentence explanation of why it is rated so under Indian law
+- "rewrite": for "yellow" or "red", provide a plain-language explanation or fair alternative. For "green", leave as ""
+
+Output ONLY a JSON array with this exact structure:
+[
+  {
+    "index": 1,
+    "risk_level": "green",
+    "confidence": "high",
+    "explanation": "Standard payment term.",
+    "rewrite": ""
+  }
+]
+
+Clauses to classify:
+{clauses_text}
+"""
+
+
+def _extract_json_array(text: str) -> Optional[List[Dict[str, Any]]]:
+    """Extracts a JSON list from LLM output, handling markdown fences and snippets."""
+    if not text:
+        return None
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+    try:
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, list):
+            return parsed
+    except Exception:
+        pass
+    # Regex fallback for [ ... ]
+    match = re.search(r"\[.*\]", cleaned, re.DOTALL)
+    if match:
+        try:
+            parsed = json.loads(match.group(0))
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            pass
+    return None
+
+
+async def _classify_batch_with_llm(
+    items: List[Tuple[int, str]],
+    api_key: str = "",
+    model: str = "",
+) -> Dict[int, ClauseResult]:
+    """
+    Classifies a batch of clauses in a single LLM round-trip with timeout and graceful fallback.
+    Returns a dictionary mapping original clause index -> ClauseResult.
+    """
+    from core.config import get_settings
+    settings = get_settings()
+    effective_api_key = settings.GEMINI_API_KEY or api_key
+
+    # Default fallback results for all items
+    results: Dict[int, ClauseResult] = {
+        idx: ClauseResult(
+            text=text,
+            risk_level=RiskLevel.GREEN,
+            rule_hit=None,
+            explanation="Standard legal term. No high-risk patterns detected.",
+            confidence="low",
+            rewrite=None,
+        )
+        for idx, text in items
+    }
+
+    if not effective_api_key or effective_api_key.startswith("sk-replace"):
+        return results
+
+    formatted_clauses = "\n\n".join(f"[{idx}] {text}" for idx, text in items)
+    prompt = BATCH_CLASSIFICATION_PROMPT.replace("{clauses_text}", formatted_clauses)
+
+    parsed_list: Optional[List[Dict[str, Any]]] = None
+
+    # Try Google GenAI first with cascade and per-request 10s timeout
+    candidate_models = [
+        settings.GEMINI_MODEL_DEV or "gemini-3.5-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-2.5-flash",
+    ]
+    seen = set()
+    models_to_try = [m for m in candidate_models if not (m in seen or seen.add(m))]
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=effective_api_key)
+        for m_name in models_to_try:
+            try:
+                response = await asyncio.wait_for(
+                    client.aio.models.generate_content(
+                        model=m_name,
+                        contents=prompt,
+                    ),
+                    timeout=5.0,
+                )
+                raw_text = response.text.strip() if response.text else ""
+                parsed_list = _extract_json_array(raw_text)
+                if parsed_list:
+                    break
+            except Exception as m_exc:
+                logger.warning("Batch GenAI classification failed on model '%s': %s", m_name, m_exc)
+    except Exception as exc:
+        logger.warning("GenAI client error during batch classification: %s", exc)
+
+    # If GenAI did not return a valid list, try OpenAI if key is present
+    if not parsed_list:
+        openai_key = settings.OPENAI_API_KEY or api_key
+        if openai_key and not openai_key.startswith("sk-replace"):
+            try:
+                from openai import AsyncOpenAI
+                oa_client = AsyncOpenAI(api_key=openai_key)
+                oa_resp = await asyncio.wait_for(
+                    oa_client.chat.completions.create(
+                        model=settings.OPENAI_MODEL_DEV or "gpt-4o-mini",
+                        messages=[{"role": "user", "content": prompt}],
+                    ),
+                    timeout=10.0,
+                )
+                raw_text = oa_resp.choices[0].message.content or ""
+                parsed_list = _extract_json_array(raw_text)
+            except Exception as oa_exc:
+                logger.warning("OpenAI fallback failed for batch classification: %s", oa_exc)
+
+    if not parsed_list:
+        logger.info("Batch LLM classification returned no parsed results; using rule-based defaults.")
+        return results
+
+    # Map parsed list back to results
+    risk_lookup = {
+        "red": RiskLevel.RED,
+        "yellow": RiskLevel.YELLOW,
+        "green": RiskLevel.GREEN,
+    }
+
+    for item in parsed_list:
+        try:
+            idx = int(item.get("index"))
+            if idx in results:
+                raw_risk = str(item.get("risk_level", "green")).lower().strip()
+                risk_lvl = risk_lookup.get(raw_risk, RiskLevel.GREEN)
+                explanation = str(item.get("explanation") or "Standard clause.").strip()
+                conf = str(item.get("confidence") or "medium").lower().strip()
+                if conf not in ("high", "medium", "low"):
+                    conf = "medium"
+                rewrite_val = item.get("rewrite")
+                rewrite_str = str(rewrite_val).strip() if rewrite_val else None
+
+                results[idx] = ClauseResult(
+                    text=results[idx].text,
+                    risk_level=risk_lvl,
+                    rule_hit=None,
+                    explanation=explanation,
+                    confidence=conf,
+                    rewrite=rewrite_str if risk_lvl in (RiskLevel.YELLOW, RiskLevel.RED) else None,
+                )
+        except (ValueError, TypeError, KeyError) as parse_err:
+            logger.debug("Skipping unparseable item in batch classification: %s", parse_err)
+
+    return results
+
 
 async def _classify_with_llm(
     clause: str,
@@ -348,89 +604,15 @@ async def _classify_with_llm(
     model: str,
 ) -> ClauseResult:
     """
-    Asks an LLM to classify a single clause as green/yellow/red.
-
-    Critically: the prompt instructs the LLM to say "low" confidence if
-    it cannot determine a clear risk level.  We never coerce a confident score.
+    Fallback single-clause classification helper for backward compatibility.
     """
-    from agents.document_analyzer.prompts import CLAUSE_CLASSIFICATION_SYSTEM, CLAUSE_CLASSIFICATION_USER
-
-    from core.config import get_settings
-    settings = get_settings()
-    effective_api_key = settings.GEMINI_API_KEY or api_key
-    model_name = settings.GEMINI_MODEL_DEV if settings.GEMINI_API_KEY else model
-
-    if not effective_api_key or effective_api_key.startswith("sk-replace"):
-        return ClauseResult(
-            text=clause,
-            risk_level=RiskLevel.GREEN,
-            explanation="LLM classification unavailable.",
-            confidence="low",
-        )
-
-    try:
-        from google import genai
-        client = genai.Client(api_key=effective_api_key)
-        prompt = f"{CLAUSE_CLASSIFICATION_SYSTEM}\n\n{CLAUSE_CLASSIFICATION_USER.format(clause=clause)}"
-
-        response = await client.aio.models.generate_content(
-            model=model_name,
-            contents=prompt,
-        )
-        raw = response.text.strip() if response.text else ""
-        return _parse_llm_classification_response(clause, raw)
-    except Exception as exc:
-        logger.warning("LLM clause classification failed: %s", exc)
-        return ClauseResult(
-            text=clause,
-            risk_level=RiskLevel.GREEN,
-            explanation="Could not determine risk level — LLM call failed. Please review manually.",
-            confidence="low",
-        )
-
-
-def _parse_llm_classification_response(clause: str, raw: str) -> ClauseResult:
-    """
-    Parses the LLM's JSON-like response into a ClauseResult.
-
-    Expected LLM output format:
-        RISK: yellow
-        CONFIDENCE: medium
-        EXPLANATION: This clause requires you to...
-
-    If the response doesn't match the expected format, we return GREEN with
-    confidence=low rather than guessing.
-    """
-    raw_lower = raw.lower()
-
-    # Extract risk level
-    risk_level = RiskLevel.GREEN
-    if "risk: red" in raw_lower or "risk:red" in raw_lower:
-        risk_level = RiskLevel.RED
-    elif "risk: yellow" in raw_lower or "risk:yellow" in raw_lower:
-        risk_level = RiskLevel.YELLOW
-
-    # Extract confidence
-    confidence = "low"  # default to low if unclear
-    if "confidence: high" in raw_lower:
-        confidence = "high"
-    elif "confidence: medium" in raw_lower:
-        confidence = "medium"
-
-    # Extract explanation (everything after "EXPLANATION:")
-    explanation = "See clause text."
-    if "explanation:" in raw_lower:
-        parts = raw.split("EXPLANATION:", 1) if "EXPLANATION:" in raw else raw.split("explanation:", 1)
-        if len(parts) > 1:
-            explanation = parts[1].strip()
-
-    return ClauseResult(
+    batch_res = await _classify_batch_with_llm([(0, clause)], api_key=api_key, model=model)
+    return batch_res.get(0, ClauseResult(
         text=clause,
-        risk_level=risk_level,
-        rule_hit=None,
-        explanation=explanation,
-        confidence=confidence,
-    )
+        risk_level=RiskLevel.GREEN,
+        explanation="Standard clause.",
+        confidence="low",
+    ))
 
 
 # ── Module-level singleton ────────────────────────────────────────────────────

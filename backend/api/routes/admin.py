@@ -54,6 +54,17 @@ from services.rag.document_processor import (
 from services.rag.embedder import BGEM3Embedder
 from db.qdrant_client import get_qdrant_client
 from core.config import get_settings
+from bson import ObjectId
+from pwdlib import PasswordHash
+from models.admin import (
+    AdminUserOut,
+    CreateAdminRequest,
+    UpdateAdminStatusRequest,
+    UpdateAdminPasswordRequest,
+    CollectionSummary,
+    CreateCollectionRequest,
+    CollectionDocumentsResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +72,7 @@ router = APIRouter(prefix="/admin", tags=["Admin Panel"])
 
 # Centralized guard for all routes in this router
 admin_guard = Depends(require_role(["admin"]))
+_password_hash = PasswordHash.recommended()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1002,4 +1014,369 @@ async def reprocess_knowledge_base_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Reprocessing failed: {exc}",
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. Multi-Admin Team Management Endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/admins",
+    response_model=List[AdminUserOut],
+    dependencies=[admin_guard],
+    summary="List All Platform Administrators",
+)
+async def list_admins(db: Any = Depends(get_database)):
+    """Returns all accounts configured with role='admin' in MongoDB."""
+    cursor = db["users"].find({"role": "admin"}).sort("created_at", -1)
+    admin_docs = await cursor.to_list(length=100)
+
+    result = []
+    for doc in admin_docs:
+        full_name = None
+        if isinstance(doc.get("profile"), dict):
+            full_name = doc["profile"].get("full_name")
+        elif doc.get("full_name"):
+            full_name = doc["full_name"]
+
+        result.append(
+            AdminUserOut(
+                id=str(doc["_id"]),
+                email=str(doc.get("email") or ""),
+                full_name=full_name,
+                role="admin",
+                is_active=bool(doc.get("is_active", True)),
+                created_at=str(doc.get("created_at") or ""),
+                updated_at=str(doc.get("updated_at") or "") if doc.get("updated_at") else None,
+            )
+        )
+    return result
+
+
+@router.post(
+    "/admins",
+    response_model=AdminUserOut,
+    dependencies=[admin_guard],
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a New Platform Administrator",
+)
+async def create_admin(body: CreateAdminRequest, db: Any = Depends(get_database)):
+    """Creates a new administrator account with individual hashed credentials."""
+    email_clean = str(body.email).strip().lower()
+
+    # Check if user already exists
+    existing = await db["users"].find_one({"email": email_clean})
+    if existing:
+        if existing.get("role") == "admin":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"An administrator account with email '{email_clean}' already exists.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A user with email '{email_clean}' already exists as role '{existing.get('role')}'. Update role instead.",
+        )
+
+    # Hash password with Argon2id
+    password_hash = _password_hash.hash(body.password)
+    now = datetime.now(timezone.utc)
+
+    admin_doc = {
+        "_id": ObjectId(),
+        "email": email_clean,
+        "role": "admin",
+        "password_hash": password_hash,
+        "is_active": True,
+        "is_anonymous": False,
+        "email_verified": True,
+        "profile": {"full_name": body.full_name} if body.full_name else {},
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db["users"].insert_one(admin_doc)
+    logger.info("Admin created new administrator: %s", email_clean)
+
+    return AdminUserOut(
+        id=str(admin_doc["_id"]),
+        email=email_clean,
+        full_name=body.full_name,
+        role="admin",
+        is_active=True,
+        created_at=now.isoformat(),
+        updated_at=now.isoformat(),
+    )
+
+
+@router.patch(
+    "/admins/{admin_id}/status",
+    response_model=AdminUserOut,
+    dependencies=[admin_guard],
+    summary="Update Administrator Active Status",
+)
+async def update_admin_status(
+    admin_id: str,
+    body: UpdateAdminStatusRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Any = Depends(get_database),
+):
+    """Enables or disables an admin account. Admins cannot deactivate themselves."""
+    if not ObjectId.is_valid(admin_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid admin ID format: '{admin_id}'.",
+        )
+
+    # Prevent self-deactivation
+    caller_id = str(current_user.get("user_id") or current_user.get("id") or "")
+    if caller_id == admin_id and not body.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot deactivate your own administrator account.",
+        )
+
+    target_oid = ObjectId(admin_id)
+    existing = await db["users"].find_one({"_id": target_oid, "role": "admin"})
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Administrator with ID '{admin_id}' not found.",
+        )
+
+    now = datetime.now(timezone.utc)
+    await db["users"].update_one(
+        {"_id": target_oid},
+        {"$set": {"is_active": body.is_active, "updated_at": now}},
+    )
+
+    updated = await db["users"].find_one({"_id": target_oid})
+    full_name = None
+    if isinstance(updated.get("profile"), dict):
+        full_name = updated["profile"].get("full_name")
+    elif updated.get("full_name"):
+        full_name = updated["full_name"]
+
+    return AdminUserOut(
+        id=str(updated["_id"]),
+        email=str(updated.get("email") or ""),
+        full_name=full_name,
+        role="admin",
+        is_active=bool(updated.get("is_active", True)),
+        created_at=str(updated.get("created_at") or ""),
+        updated_at=now.isoformat(),
+    )
+
+
+@router.patch(
+    "/admins/{admin_id}/password",
+    response_model=Dict[str, str],
+    dependencies=[admin_guard],
+    summary="Reset Administrator Password",
+)
+async def reset_admin_password(
+    admin_id: str,
+    body: UpdateAdminPasswordRequest,
+    db: Any = Depends(get_database),
+):
+    """Updates an administrator's password with a new Argon2id hash."""
+    if not ObjectId.is_valid(admin_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid admin ID format: '{admin_id}'.",
+        )
+
+    target_oid = ObjectId(admin_id)
+    existing = await db["users"].find_one({"_id": target_oid, "role": "admin"})
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Administrator with ID '{admin_id}' not found.",
+        )
+
+    new_hash = _password_hash.hash(body.password)
+    now = datetime.now(timezone.utc)
+
+    await db["users"].update_one(
+        {"_id": target_oid},
+        {"$set": {"password_hash": new_hash, "updated_at": now}},
+    )
+
+    logger.info("Admin password reset for user ID: %s", admin_id)
+    return {"message": "Administrator password updated successfully.", "admin_id": admin_id}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. MongoDB Database Collections Explorer Endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+PROTECTED_CORE_COLLECTIONS = {
+    "users",
+    "reflection_logs",
+    "scam_patterns",
+    "scam_candidates",
+    "scam_submissions",
+    "vault_documents",
+    "user_drafts",
+    "knowledge_base_documents",
+}
+
+
+def _serialize_mongo_doc(doc: Any) -> Any:
+    """Helper to convert MongoDB documents into standard JSON-serializable types."""
+    if isinstance(doc, dict):
+        return {k: _serialize_mongo_doc(v) for k, v in doc.items()}
+    if isinstance(doc, list):
+        return [_serialize_mongo_doc(item) for item in doc]
+    if isinstance(doc, ObjectId):
+        return str(doc)
+    if isinstance(doc, datetime):
+        return doc.isoformat()
+    if isinstance(doc, bytes):
+        return f"<binary data {len(doc)} bytes>"
+    return doc
+
+
+@router.get(
+    "/collections",
+    response_model=List[CollectionSummary],
+    dependencies=[admin_guard],
+    summary="List All MongoDB Collections in Database",
+)
+async def list_collections(db: Any = Depends(get_database)):
+    """Returns all collection names in the active database with document and index counts."""
+    collection_names = await db.list_collection_names()
+    collection_names.sort()
+
+    summaries = []
+    for name in collection_names:
+        is_system = name.startswith("system.") or name in PROTECTED_CORE_COLLECTIONS
+        try:
+            doc_count = await db[name].count_documents({})
+        except Exception:
+            doc_count = 0
+
+        try:
+            indexes = await db[name].index_information()
+            indexes_count = len(indexes)
+        except Exception:
+            indexes_count = 0
+
+        summaries.append(
+            CollectionSummary(
+                name=name,
+                document_count=doc_count,
+                indexes_count=indexes_count,
+                is_system=is_system,
+            )
+        )
+    return summaries
+
+
+@router.post(
+    "/collections",
+    response_model=CollectionSummary,
+    dependencies=[admin_guard],
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a New MongoDB Collection",
+)
+async def create_collection(
+    body: CreateCollectionRequest,
+    db: Any = Depends(get_database),
+):
+    """Creates a new collection in the active database."""
+    name_clean = body.name.strip()
+    existing_cols = await db.list_collection_names()
+
+    if name_clean in existing_cols:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Collection '{name_clean}' already exists in the database.",
+        )
+
+    try:
+        await db.create_collection(name_clean)
+        logger.info("Admin created new MongoDB collection: %s", name_clean)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create collection '{name_clean}': {exc}",
+        )
+
+    return CollectionSummary(
+        name=name_clean,
+        document_count=0,
+        indexes_count=1,  # Default _id_ index created by MongoDB
+        is_system=False,
+    )
+
+
+@router.get(
+    "/collections/{collection_name}/documents",
+    response_model=CollectionDocumentsResponse,
+    dependencies=[admin_guard],
+    summary="Inspect Documents in a Collection",
+)
+async def get_collection_documents(
+    collection_name: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=100),
+    db: Any = Depends(get_database),
+):
+    """Returns paginated JSON documents from any collection in the database."""
+    existing_cols = await db.list_collection_names()
+    if collection_name not in existing_cols:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Collection '{collection_name}' does not exist.",
+        )
+
+    total = await db[collection_name].count_documents({})
+    cursor = db[collection_name].find().skip(skip).limit(limit)
+    raw_docs = await cursor.to_list(length=limit)
+
+    serialized = [_serialize_mongo_doc(d) for d in raw_docs]
+
+    return CollectionDocumentsResponse(
+        collection_name=collection_name,
+        total_documents=total,
+        skip=skip,
+        limit=limit,
+        documents=serialized,
+    )
+
+
+@router.delete(
+    "/collections/{collection_name}",
+    response_model=Dict[str, str],
+    dependencies=[admin_guard],
+    summary="Drop a Custom Collection",
+)
+async def drop_custom_collection(
+    collection_name: str,
+    db: Any = Depends(get_database),
+):
+    """Drops a custom collection. Protected core system collections cannot be dropped."""
+    if collection_name in PROTECTED_CORE_COLLECTIONS or collection_name.startswith("system."):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot drop protected core collection '{collection_name}'.",
+        )
+
+    existing_cols = await db.list_collection_names()
+    if collection_name not in existing_cols:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Collection '{collection_name}' does not exist.",
+        )
+
+    try:
+        await db.drop_collection(collection_name)
+        logger.info("Admin dropped custom collection: %s", collection_name)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to drop collection '{collection_name}': {exc}",
+        )
+
+    return {"message": f"Collection '{collection_name}' was successfully dropped."}
 

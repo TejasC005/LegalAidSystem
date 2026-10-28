@@ -125,7 +125,7 @@ async def lifespan(app: FastAPI):
     # 4b. Synchronize configured admin account in MongoDB
     try:
         import os
-        from datetime import timezone
+        from datetime import datetime, timezone
         from bson import ObjectId
         from models.user import UserRole
         admin_email = (os.getenv("ADMIN_EMAIL", "") or "").strip().lower()
@@ -255,12 +255,16 @@ def create_app() -> FastAPI:
     )
 
     # ── CORS — restrict to the configured frontend origin ─────────────────
+    raw_origins = [orig.strip() for orig in settings.FRONTEND_ORIGIN.split(",") if orig.strip()]
+    origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$" if not settings.is_production else None
+
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.FRONTEND_ORIGIN],  # Read from .env, never "*"
+        allow_origins=raw_origins,
+        allow_origin_regex=origin_regex,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept"],
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # ── Versioned API router ──────────────────────────────────────────────

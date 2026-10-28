@@ -2,8 +2,9 @@
 
 .profile-setup-container {
   max-width: 650px;
-  margin: 2.5rem auto;
-  padding: 2.5rem;
+  width: 100%;
+  margin: 1.5rem auto;
+  padding: clamp(1.5rem, 5vw, 2.5rem);
   background: #ffffff;
   border: 1px solid var(--color-border, #d0dbd8);
   border-radius: 16px;
@@ -17,7 +18,7 @@
 }
 
 .profile-setup-header h2 {
-  font-size: 1.875rem;
+  font-size: clamp(1.4rem, 4vw, 1.875rem);
   font-weight: 700;
   margin-bottom: 0.5rem;
   color: #134e42;
@@ -88,3 +89,16 @@
   background: #f1f5f9;
   color: #1e293b;
 }
+
+@media (max-width: 520px) {
+  .profile-setup-container .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .profile-setup-container .btn-skip,
+  .profile-setup-container .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

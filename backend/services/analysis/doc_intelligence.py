@@ -18,6 +18,7 @@ an intelligent, multi-type legal document analyzer that:
 
 import re
 import json
+import asyncio
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple, List
@@ -109,11 +110,9 @@ async def _call_llm_json(
     # Path A: Google GenAI Client with multi-model cascade
     if gemini_key and not gemini_key.startswith("sk-replace"):
         candidate_models = [
-            settings.GEMINI_MODEL_DEV or "gemini-2.5-flash",
+            settings.GEMINI_MODEL_DEV or "gemini-3.5-flash-lite",
+            "gemini-3.5-flash-lite",
             "gemini-2.5-flash",
-            "gemini-flash-latest",
-            "gemini-3.8-flash",
-            "gemini-1.5-flash",
         ]
         seen = set()
         models_to_try = [m for m in candidate_models if not (m in seen or seen.add(m))]
@@ -125,9 +124,12 @@ async def _call_llm_json(
 
             for m_name in models_to_try:
                 try:
-                    response = await client.aio.models.generate_content(
-                        model=m_name,
-                        contents=full_prompt,
+                    response = await asyncio.wait_for(
+                        client.aio.models.generate_content(
+                            model=m_name,
+                            contents=full_prompt,
+                        ),
+                        timeout=5.0,
                     )
                     raw_text = response.text.strip() if response.text else ""
                     parsed = _extract_json_from_text(raw_text)

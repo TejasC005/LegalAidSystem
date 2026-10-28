@@ -353,10 +353,9 @@ function DocumentDrafter() {
                     <Download size={14} />
                     <span>Download DOCX</span>
                   </button>
-                  {/*
-                   * MODULE 9 HANDOFF BUTTON
-                   * Navigates to /filing-guide?doc_type=...&draft_id=...
-                   */}
+                  {/* ──────────────────────────────────────────────────────────────────────────
+                   * NOTE: Temporarily hidden from UI (Module 9 Filing Guide handoff). DO NOT DELETE.
+                   * Uncomment the button below to restore the "Where to File" button after drafting.
                   <button
                     id="btn-where-to-file"
                     className="btn-where-to-file"
@@ -370,6 +369,7 @@ function DocumentDrafter() {
                     <ClipboardList size={15} />
                     <span>Where to File →</span>
                   </button>
+                   * ────────────────────────────────────────────────────────────────────────── */}
                 </div>
               </div>
               <pre className="preview-document-text">{sessionData.assembled_document}</pre>

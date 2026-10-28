@@ -86,6 +86,7 @@ class UserDocument(BaseModel):
     email: Optional[str] = None             # Email address (primary or secondary channel)
     email_verified: bool = False
     role: UserRole = UserRole.USER
+    password_hash: Optional[str] = None
     is_anonymous: bool = False
     is_active: bool = True
     profile: Optional[ProfileDocument] = Field(default_factory=ProfileDocument)

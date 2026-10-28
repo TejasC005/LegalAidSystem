@@ -30,6 +30,8 @@ import {
   reprocessKnowledgeBaseDocument,
 } from '../services/api';
 import ScamIntelligenceSection from '../components/dashboard/ScamIntelligenceSection';
+import AdminTeamSection from '../components/dashboard/AdminTeamSection';
+import CollectionsExplorerSection from '../components/dashboard/CollectionsExplorerSection';
 import './AdminDashboard.css';
 
 const NAV_ITEMS = [
@@ -37,7 +39,9 @@ const NAV_ITEMS = [
   { id: 'scam_intel', label: 'Scam Intelligence', icon: '🛡' },
   { id: 'knowledge', label: 'Legal Knowledge Base', icon: '⚖' },
   { id: 'agents', label: 'Agent Analytics', icon: '◇' },
-  { id: 'users', label: 'User Management', icon: '♙' },
+  { id: 'users', label: 'Citizens & Users', icon: '♙' },
+  { id: 'admins', label: 'Admin Team', icon: '👑' },
+  { id: 'collections', label: 'Collections Explorer', icon: '🗄' },
   { id: 'moderation', label: 'Moderation Queue', icon: '⚑' },
 ];
 
@@ -734,6 +738,10 @@ export default function AdminDashboard() {
               )}
 
               {section === 'scam_intel' && <ScamIntelligenceSection />}
+
+              {section === 'admins' && <AdminTeamSection />}
+
+              {section === 'collections' && <CollectionsExplorerSection />}
 
               {section === 'knowledge' && (
                 <>
