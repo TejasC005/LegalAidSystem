@@ -1,0 +1,70 @@
+# docker-compose.override.yml
+#
+# LOCAL DEVELOPMENT OVERRIDE — adds MongoDB and Redis as local Docker containers.
+#
+# Docker Compose automatically merges this file with docker-compose.yml when you run
+# `docker compose up` (no -f flags needed). You do NOT need to pass this file explicitly.
+#
+# IMPORTANT: This file is for LOCAL DEV ONLY.
+#   - No authentication on MongoDB or Redis (local network only)
+#   - Never use these container configs in staging or production
+#   - Staging/production continues to use MongoDB Atlas + Redis Cloud (values in .env)
+#
+# USAGE
+# ─────
+# Start just the databases (most common during backend dev):
+#   docker compose up mongo-local redis-local -d
+#
+# Start everything (backend + frontend + databases):
+#   docker compose up -d
+#
+# Stop and remove containers (data in named volumes is preserved):
+#   docker compose down
+#
+# Stop AND wipe data volumes (full reset):
+#   docker compose down -v
+
+version: "3.9"
+
+services:
+
+  mongo-local:
+    image: mongo:7
+    container_name: lexis_mongo_local
+    restart: unless-stopped
+    ports:
+      - "27017:27017"        # Exposed to host on standard MongoDB port
+    volumes:
+      - mongo_data:/data/db  # Named volume — data survives container restarts
+    # No MONGO_INITDB_ROOT_USERNAME/PASSWORD: local dev uses no auth
+    # Connection string for .env: mongodb://localhost:27017
+
+  redis-local:
+    image: redis:7-alpine
+    container_name: lexis_redis_local
+    restart: unless-stopped
+    ports:
+      - "6379:6379"          # Exposed to host on standard Redis port
+    volumes:
+      - redis_data:/data     # Named volume — data survives container restarts
+    command: redis-server --appendonly yes   # Enable AOF persistence
+    # No --requirepass: local dev uses no auth
+    # Connection string for .env: redis://localhost:6379/0
+
+  qdrant-local:
+    image: qdrant/qdrant:v1.11.0
+    container_name: lexis_qdrant_local
+    restart: unless-stopped
+    ports:
+      - "6333:6333"          # REST API & Web UI (http://localhost:6333/dashboard)
+      - "6334:6334"          # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local

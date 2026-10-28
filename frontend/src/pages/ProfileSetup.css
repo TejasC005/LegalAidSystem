@@ -1,0 +1,104 @@
+/* frontend/src/pages/ProfileSetup.css */
+
+.profile-setup-container {
+  max-width: 650px;
+  width: 100%;
+  margin: 1.5rem auto;
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  background: #ffffff;
+  border: 1px solid var(--color-border, #d0dbd8);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(20, 60, 50, 0.08);
+  color: var(--color-text, #1c2b28);
+}
+
+.profile-setup-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.profile-setup-header h2 {
+  font-size: clamp(1.4rem, 4vw, 1.875rem);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #134e42;
+}
+
+.profile-setup-header p {
+  color: var(--color-text-secondary, #4a6560);
+  font-size: 0.95rem;
+}
+
+.profile-setup-container .profile-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profile-setup-container .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-setup-container .form-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.profile-setup-container .form-group input,
+.profile-setup-container .form-group select,
+.profile-setup-container .form-group textarea {
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-setup-container .form-group input:focus,
+.profile-setup-container .form-group select:focus,
+.profile-setup-container .form-group textarea:focus {
+  outline: none;
+  border-color: #1a6b5a;
+  box-shadow: 0 0 0 3px rgba(26, 107, 90, 0.15);
+}
+
+.profile-setup-container .form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+.profile-setup-container .btn-skip {
+  background: transparent;
+  border: 1.5px solid #cbd5e1;
+  color: #64748b;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.profile-setup-container .btn-skip:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+@media (max-width: 520px) {
+  .profile-setup-container .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .profile-setup-container .btn-skip,
+  .profile-setup-container .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

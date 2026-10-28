@@ -1,0 +1,574 @@
+/*
+ * frontend/src/pages/VaultDeadlines.css
+ * ──────────────────────────────────────────────────────────────────────────────
+ * LEXIS — Vault & Deadlines — Module 10
+ * Clean, high-contrast forest green and emerald theme with crisp white cards.
+ * ──────────────────────────────────────────────────────────────────────────────
+ */
+
+/* ── Root Page Container ──────────────────────────────────────────────────── */
+.vault-page {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  min-height: calc(100vh - 120px);
+  background: var(--color-bg, #f4f6f5);
+  color: var(--color-text, #1c2b28);
+  padding: 0;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Page Header ─────────────────────────────────────────────────────────── */
+.vault-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: linear-gradient(135deg, #134e42 0%, #1a6b5a 100%);
+  border-radius: 16px;
+  padding: clamp(1.2rem, 3.5vw, 1.75rem) clamp(1.2rem, 3.5vw, 2rem);
+  margin-bottom: 2rem;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(19, 78, 66, 0.2);
+}
+
+.vault-header-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a7f3d0;
+  flex-shrink: 0;
+}
+
+.vault-header h1 {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.3rem 0;
+}
+
+.vault-header .vault-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.88);
+  margin: 0;
+}
+
+/* ── Anonymous Block ─────────────────────────────────────────────────────── */
+.vault-anon-block {
+  background: #ffffff;
+  border: 1.5px solid var(--color-border, #d0dbd8);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  max-width: 560px;
+  margin: 4rem auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.vault-anon-block .anon-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  border: 2px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #059669;
+  margin: 0 auto 1.5rem;
+}
+
+.vault-anon-block h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #134e42);
+  margin-bottom: 0.75rem;
+}
+
+.vault-anon-block p {
+  color: var(--color-text-secondary, #4a6560);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.btn-signin {
+  background: linear-gradient(135deg, #1a6b5a 0%, #134e42 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.85rem 2rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(26, 107, 90, 0.25);
+}
+
+.btn-signin:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+/* ── Grid Layout ─────────────────────────────────────────────────────────── */
+.vault-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .vault-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Glass/Clean Panel ───────────────────────────────────────────────────── */
+.glass-panel {
+  background: #ffffff;
+  border: 1px solid var(--color-border-subtle, #e2e8f0);
+  border-radius: 16px;
+  padding: 1.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.glass-panel h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #134e42);
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.panel-title-icon {
+  color: var(--color-primary, #1a6b5a);
+}
+
+/* ── Upload Zone ─────────────────────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  background: #f8faf9;
+  transition: all 0.2s ease;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: var(--color-primary, #1a6b5a);
+  background: #f0fdf4;
+}
+
+.upload-zone .upload-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(26, 107, 90, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, #1a6b5a);
+  margin: 0 auto 0.75rem;
+}
+
+.upload-zone p {
+  color: #475569;
+  font-size: 0.88rem;
+  margin: 0.2rem 0;
+}
+
+.upload-zone .upload-filetypes {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin-top: 0.5rem;
+}
+
+.upload-zone input[type="file"] {
+  display: none;
+}
+
+/* ── Upload Status ───────────────────────────────────────────────────────── */
+.upload-status {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.upload-status.uploading {
+  background: #f0fdf4;
+  color: var(--color-primary, #1a6b5a);
+  border: 1px solid #bbf7d0;
+}
+
+.upload-status.success {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.upload-status.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+/* ── Document List ───────────────────────────────────────────────────────── */
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.doc-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: #f8faf9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+
+.doc-card:hover {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.doc-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.doc-icon-svg.pdf { color: #dc2626; }
+.doc-icon-svg.img { color: #2563eb; }
+.doc-icon-svg.generic { color: #64748b; }
+
+.doc-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-meta {
+  font-size: 0.76rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.doc-enc-badge {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.doc-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Deadlines List ──────────────────────────────────────────────────────── */
+.deadline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deadline-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: #f8faf9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+
+.urgency-badge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.urgency-badge.critical {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.urgency-badge.high {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.urgency-badge.medium {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.urgency-badge.low {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.deadline-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.deadline-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.deadline-date {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 1px;
+}
+
+.deadline-reminders {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ── Draft Preview ───────────────────────────────────────────────────────── */
+.draft-preview {
+  background: #f8faf9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+
+.draft-preview h4 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #134e42);
+  margin: 0 0 0.75rem 0;
+}
+
+.draft-text {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: #1e293b;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #ffffff;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.dates-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.dates-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 580px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.dates-modal h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #134e42);
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-desc {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary, #4a6560);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.date-card {
+  background: #f8faf9;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.date-card.needs-confirm {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.date-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.date-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.confidence-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.confidence-badge.high {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.confidence-badge.medium {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.confidence-badge.low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.date-value-row input[type="date"] {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.date-value-row input[type="date"]:focus {
+  outline: none;
+  border-color: var(--color-primary, #1a6b5a);
+  box-shadow: 0 0 0 2px rgba(26, 107, 90, 0.15);
+}
+
+.date-snippet {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0.4rem 0 0;
+  font-style: italic;
+}
+
+.warn-label {
+  font-size: 0.78rem;
+  color: #b45309;
+  margin: 0.4rem 0 0;
+  font-weight: 600;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+/* ── Responsive Mobile Queries ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .vault-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1.25rem;
+  }
+
+  .glass-panel {
+    padding: 1.25rem 1rem;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .deadline-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .deadline-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+

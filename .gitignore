@@ -8,7 +8,11 @@ env/
 *.db
 *.sqlite3
 backend/logs/*.log
+vault_storage/
 backend/vault_storage/
+backend/data/knowledge_base/uploads/
+data/knowledge_base/uploads/
+data/
 
 # --- Env files ---
 .env
@@ -24,6 +28,19 @@ frontend/.vite/
 .vscode/
 .idea/
 
-# --- Firebase ---
-firebase-service-account.json
-*serviceAccountKey.json
+# --- Firebase & Credentials ---
+*serviceAccountKey*.json
+*service_account*.json
+firebase-service-account*.json
+backend/firebase/*.json
+!backend/firebase/service_account.example.json
+*.pem
+*.key
+
+# --- Documentation / Test ---
+docs/Test/
+latest_otp.txt
+backend/latest_otp.txt
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,49 @@
+/*
+ * frontend/src/pages/Placeholder.css
+ * ─────────────────────────────────────
+ * Shared styles for all 6 feature placeholder pages.
+ * Each placeholder page imports this same file.
+ */
+
+.placeholder-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 32px;
+  max-width: 560px;
+  margin: 0 auto;
+  gap: 14px;
+}
+
+.placeholder-icon {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.placeholder-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.placeholder-badge {
+  display: inline-block;
+  background: rgba(26, 107, 90, 0.10);
+  color: var(--color-primary);
+  border: 1.5px solid rgba(26, 107, 90, 0.25);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.placeholder-desc {
+  font-size: 0.92rem;
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+  max-width: 420px;
+}

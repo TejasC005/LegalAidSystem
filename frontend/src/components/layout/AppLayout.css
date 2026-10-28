@@ -1,0 +1,377 @@
+/*
+ * frontend/src/components/layout/AppLayout.css
+ * ──────────────────────────────────────────────
+ * Styles for the shared app shell (header, sidebar, main, footer).
+ * Uses CSS custom properties defined in index.css.
+ */
+
+/* ── Overall grid ────────────────────────────────────────────────────────── */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;          /* Take up the full viewport height */
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.app-header {
+  height: var(--header-height);
+  background-color: var(--color-primary-dark);
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;           /* Header stays at the top when you scroll */
+  top: 0;
+  z-index: 100;               /* Above everything else */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Mobile hamburger toggle button (hidden on desktop) */
+.app-header__menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.app-header__menu-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.app-header__menu-btn:active {
+  transform: scale(0.95);
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-header__logo-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #a7f3d0;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.app-header__logo-wrap:hover {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.app-header__logo-icon {
+  color: #6ee7b7;
+}
+
+.app-header__name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.app-header__tagline {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.7);
+  padding-left: 6px;
+  display: none;              /* Hidden on small screens */
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (min-width: 640px) {
+  .app-header__tagline { display: inline; }
+}
+
+.app-header__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-header__phone {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.85);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.app-header__role-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  color: #a7f3d0;
+  padding: 2px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.app-header__logout-btn {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.9);
+  border-color: rgba(255,255,255,0.35);
+  padding: 6px 14px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.app-header__logout-btn:hover {
+  background-color: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.6);
+}
+
+/* ── Mobile Drawer Backdrop Overlay ─────────────────────────────────────── */
+.app-sidebar__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 1040;
+  animation: fadeInBackdrop 0.22s ease-out;
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Body (sidebar + main content) ──────────────────────────────────────── */
+.app-body {
+  display: flex;
+  flex: 1;                    /* Takes up all remaining vertical space */
+  position: relative;
+  min-width: 0;
+  background-color: var(--color-sidebar-bg); /* Prevents any white gap behind/under sidebar */
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.app-sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--color-sidebar-bg);
+  flex-shrink: 0;             /* Sidebar never shrinks below its width */
+  min-height: calc(100vh - var(--header-height)); /* Full remaining viewport height */
+  padding: 16px 0;
+  border-right: 1px solid rgba(0, 0, 0, 0.2);
+  align-self: stretch;        /* Stretches to the full height of body so it covers 100% space */
+  z-index: 50;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-sidebar__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px;
+  position: sticky;           /* Fixed/sticky while page scrolls */
+  top: calc(var(--header-height) + 16px);
+}
+
+.app-sidebar__item {
+  width: 100%;
+}
+
+/* Base link style */
+.app-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius);
+  color: var(--color-sidebar-text);
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-sidebar__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+
+.app-sidebar__link:hover {
+  background-color: var(--color-sidebar-hover);
+  color: #ffffff;
+}
+
+.app-sidebar__link:hover .app-sidebar__icon {
+  opacity: 1;
+  color: #6ee7b7;
+}
+
+/* Active link (NavLink adds this class automatically) */
+.app-sidebar__link--active {
+  background-color: var(--color-sidebar-active);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app-sidebar__link--active .app-sidebar__icon {
+  opacity: 1;
+  color: #ffffff;
+}
+
+/* ── Main content area ───────────────────────────────────────────────────── */
+.app-main {
+  flex: 1;                    /* Takes up all remaining horizontal space */
+  min-width: 0;               /* Prevents content blowout in flex layout */
+  overflow-y: auto;           /* Scroll within the main area */
+  padding: 28px 32px;
+  background-color: var(--color-bg);
+  transition: padding 0.2s ease;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.app-footer {
+  height: var(--footer-height);
+  background-color: var(--color-primary-dark);
+  color: rgba(255,255,255,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  padding: 0 24px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.app-footer__divider {
+  opacity: 0.4;
+}
+
+/* ── Mobile & Tablet Media Queries ───────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .app-main {
+    padding: 22px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 16px;
+  }
+
+  .app-header__menu-btn {
+    display: flex;            /* Visible on mobile/tablet */
+  }
+
+  .app-header__phone {
+    max-width: 130px;
+  }
+
+  /* Transform sidebar into an Off-Canvas Sliding Drawer */
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 270px;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 1050;
+    box-shadow: 6px 0 24px rgba(0, 0, 0, 0.45);
+    transform: translateX(-100%);
+    padding-top: 24px;
+    align-self: unset;
+  }
+
+  .app-sidebar__list {
+    position: static;
+  }
+
+  .app-sidebar--open {
+    transform: translateX(0);
+  }
+
+  .app-main {
+    padding: 16px 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-header {
+    padding: 0 12px;
+  }
+
+  .app-header__name {
+    font-size: 1.15rem;
+  }
+
+  .app-header__logo-wrap {
+    width: 34px;
+    height: 34px;
+  }
+
+  .app-header__user {
+    gap: 8px;
+  }
+
+  .app-header__phone {
+    max-width: 90px;
+    font-size: 0.78rem;
+  }
+
+  .app-header__role-badge {
+    display: none;            /* Hidden on tiny screens to preserve space */
+  }
+
+  .app-header__logout-btn {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+
+  .app-main {
+    padding: 12px 10px;
+  }
+
+  .app-footer {
+    height: auto;
+    padding: 14px 12px;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+    font-size: 0.72rem;
+  }
+
+  .app-footer__divider {
+    display: none;
+  }
+}
+

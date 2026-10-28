@@ -1,35 +1,78 @@
-# --- Core framework ---
+# =============================================================================
+# LEXIS Backend — Python Dependencies
+# =============================================================================
+
+# ── Core framework ────────────────────────────────────────────────────────────
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
-pydantic==2.9.2
+pydantic==2.12.5
 pydantic-settings==2.5.2
 
-# --- LLM / Agents ---
-openai==1.51.0
+
+
+
+# ── LLM / Agents ─────────────────────────────────────────────────────────────
+google-genai==2.22.0
+openai>=1.109.0,<2.0.0
 tenacity==9.0.0
 
-# --- Auth ---
+# ── LangGraph (orchestration engine) ─────────────────────────────────────────
+langgraph==1.2.11
+langchain-openai>=1.0.0,<2.0.0
+langchain-core>=0.3.0
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
 firebase-admin==6.5.0
 python-jose[cryptography]==3.3.0
+types-python-jose>=3.3.0
+email-validator>=2.1.0
+pwdlib[argon2]>=0.2.0
 
-# --- Database / Persistence ---
-sqlalchemy==2.0.35
+# ── Vector DB & Embeddings (RAG — Module 5) ─────────────────────────────────
+qdrant-client>=1.11.0
+fastembed>=0.8.0
+
+# ── Document Generation (Module 6) ───────────────────────────────────────────
+reportlab>=4.0.0
+types-reportlab>=5.0.0
+python-docx>=1.0.0
+
+# ── OCR & File Analysis (Module 7) ───────────────────────────────────────────
+PyMuPDF>=1.24.0            # PDF text extraction (digital PDFs — fast, no Tesseract needed)
+pytesseract>=0.3.13        # Tesseract OCR Python wrapper (for scanned images/PDFs)
+Pillow>=10.0.0             # Image processing library required by pytesseract
+# NOTE: pytesseract requires the Tesseract binary to be installed on the OS.
+#   Windows: https://github.com/UB-Mannheim/tesseract/wiki (add to PATH)
+#   Linux:   sudo apt install tesseract-ocr
+#   Docker:  RUN apt-get install -y tesseract-ocr
+# For unit tests: OCR calls are mocked, so Tesseract binary is NOT required to run tests.
+
+# ── Database / Persistence ────────────────────────────────────────────────────
+motor==3.6.0              # Async MongoDB driver (Motor wraps PyMongo)
+pymongo==4.9.2            # motor 3.6.0 requires pymongo>=4.9,<4.10
+sqlalchemy==2.0.35        # Kept for compatibility with future SQLite dev mode
 aiosqlite==0.20.0
 alembic==1.13.3
 
-# --- Scheduling / Deadlines ---
+# ── Redis (async) ─────────────────────────────────────────────────────────────
+redis==5.2.0              # redis-py with built-in asyncio support (redis.asyncio)
+
+# ── Scheduling / Deadlines ────────────────────────────────────────────────────
 apscheduler==3.10.4
 
-# --- Utilities ---
+# ── Logging ───────────────────────────────────────────────────────────────────
+python-json-logger==2.0.7  # Structured JSON log formatter
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv==1.0.1
-httpx==0.27.2
+httpx==0.28.1
 python-multipart==0.0.12
 loguru==0.7.2
-
-# --- Security ---
+typing-extensions>=4.12.0
+# ── Security ──────────────────────────────────────────────────────────────────
 cryptography==43.0.1
 slowapi==0.1.9
 
-# --- Testing ---
+# ── Testing ───────────────────────────────────────────────────────────────────
 pytest==8.3.3
 pytest-asyncio==0.24.0
