@@ -405,7 +405,8 @@ export default function ScamDetection() {
         <div className="scam-hero-inner">
           <div className="scam-hero-badge">
             <ShieldCheck size={14} />
-            <span>Module 8 · Admin-Managed Scam Intelligence</span>
+            {/* NOTE: "Module 8 · " prefix hidden from UI. Original: "Module 8 · Admin-Managed Scam Intelligence" */}
+            <span>Admin-Managed Scam Intelligence</span>
           </div>
           <h1>Scam Intelligence & <span>Document Analysis</span></h1>
           <p className="scam-hero-sub">

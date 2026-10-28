@@ -58,6 +58,8 @@ const FEATURES = [
     module:  8,
     color:   '#1a6b5a',
   },
+  /* ── Temporarily hidden from Dashboard UI cards. DO NOT DELETE. ───────────
+   * Uncomment the blocks below to restore the Filing Guide & Vault cards.
   {
     path:    '/filing-guide',
     icon:    ClipboardList,
@@ -74,6 +76,7 @@ const FEATURES = [
     module:  10,
     color:   '#1a6b5a',
   },
+  * ────────────────────────────────────────────────────────────────────────── */
 ];
 
 
@@ -127,7 +130,11 @@ function Home() {
                   <h3 className="home-feature-card__title">{feature.title}</h3>
                   <p className="home-feature-card__desc">{feature.desc}</p>
                 </div>
+                {/* ──────────────────────────────────────────────────────────────────────────
+                 * NOTE: "Module X" badge temporarily hidden from UI. DO NOT DELETE.
+                 * Uncomment the line below to restore the module badge on feature cards.
                 <span className="home-feature-card__module">Module {feature.module}</span>
+                 * ────────────────────────────────────────────────────────────────────────── */}
               </Link>
             );
           })}

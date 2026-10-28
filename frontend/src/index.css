@@ -73,11 +73,14 @@
   box-sizing: border-box;  /* padding + border are included in width — removes surprises */
   margin: 0;
   padding: 0;
+  min-width: 0;            /* Prevents flex/grid children from overflowing containers */
 }
 
 html {
   font-size: var(--font-size-base);
   -webkit-text-size-adjust: 100%;
+  overflow-x: clip;
+  width: 100%;
 }
 
 body {
@@ -86,6 +89,9 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: clip;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 a {
@@ -204,3 +210,11 @@ img, svg {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
+
+/* ── Mobile Form Hygiene ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents iOS auto-zoom on input focus */
+  }
+}
+

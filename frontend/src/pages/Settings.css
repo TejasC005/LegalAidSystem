@@ -2,8 +2,9 @@
 
 .settings-page {
   max-width: 900px;
+  width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  padding: 0;
   color: var(--color-text, #1c2b28);
 }
 
@@ -11,9 +12,10 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--color-border, #d0dbd8);
+  flex-wrap: wrap;
 }
 
 .settings-header-icon-wrap {
@@ -254,3 +256,29 @@
   border-color: #94a3b8;
   color: #0f172a;
 }
+
+/* ── Responsive Mobile Queries ───────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .settings-section {
+    padding: 1.25rem 1rem;
+  }
+
+  .picture-upload-box {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .email-verify-box {
+    padding: 1rem;
+  }
+
+  .settings-page .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

@@ -15,7 +15,7 @@ All auth endpoints live under /api/v1/auth/
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 from bson import ObjectId
@@ -370,37 +370,71 @@ async def get_me(
 
 @router.post("/admin/login", summary="Admin email/password login")
 async def admin_login(body: AdminLoginRequest, request: Request):
-    admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
-    admin_password_hash = os.getenv("ADMIN_PASSWORD_HASH", "")
-
-    if not admin_email or not admin_password_hash:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Admin login is not configured.",
-        )
-
     email = str(body.email).strip().lower()
-    password_valid = _password_hash.verify(
-        body.password, admin_password_hash
-    )
+    db = request.app.state.mongo_client[request.app.state.mongo_db_name]
 
-    if email != admin_email or not password_valid:
+    # 1. Look up user in MongoDB with role "admin"
+    admin_user = await db["users"].find_one({
+        "email": email,
+        "role": "admin",
+        "is_active": {"$ne": False},
+    })
+
+    admin_env_email = (os.getenv("ADMIN_EMAIL", "") or "").strip().lower()
+    admin_env_hash = (os.getenv("ADMIN_PASSWORD_HASH", "") or "").strip()
+
+    # If user not found in DB, check if it matches bootstrap admin from .env
+    if not admin_user:
+        if admin_env_email and email == admin_env_email and admin_env_hash:
+            if _password_hash.verify(body.password, admin_env_hash):
+                now = datetime.now(timezone.utc)
+                insert_res = await db["users"].insert_one({
+                    "_id": ObjectId(),
+                    "email": admin_env_email,
+                    "role": "admin",
+                    "password_hash": admin_env_hash,
+                    "is_active": True,
+                    "is_anonymous": False,
+                    "email_verified": True,
+                    "created_at": now,
+                    "updated_at": now,
+                })
+                user_id = str(insert_res.inserted_id)
+                return {
+                    "access_token": create_access_token(user_id, "admin"),
+                    "refresh_token": create_refresh_token(user_id, "admin"),
+                    "token_type": "bearer",
+                    "role": "admin",
+                }
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
         )
 
-    db = request.app.state.mongo_client[request.app.state.mongo_db_name]
-    admin_user = await db["users"].find_one({
-        "email": admin_email,
-        "role": "admin",
-        "is_active": {"$ne": False},
-    })
+    # 2. User exists in DB with role "admin"
+    user_hash = admin_user.get("password_hash")
+    password_valid = False
 
-    if not admin_user:
+    if user_hash:
+        try:
+            password_valid = _password_hash.verify(body.password, user_hash)
+        except Exception:
+            password_valid = False
+    elif admin_env_email and email == admin_env_email and admin_env_hash:
+        try:
+            password_valid = _password_hash.verify(body.password, admin_env_hash)
+            if password_valid:
+                await db["users"].update_one(
+                    {"_id": admin_user["_id"]},
+                    {"$set": {"password_hash": admin_env_hash}}
+                )
+        except Exception:
+            password_valid = False
+
+    if not password_valid:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No active admin account is configured in the database.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
         )
 
     user_id = str(admin_user["_id"])

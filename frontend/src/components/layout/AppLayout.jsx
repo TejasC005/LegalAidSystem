@@ -37,7 +37,7 @@
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   Scale,
@@ -49,7 +49,9 @@ import {
   FolderLock,
   Settings,
   Sliders,
-  Briefcase
+  Briefcase,
+  Menu,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './AppLayout.css';
@@ -61,8 +63,11 @@ const NAV_LINKS = [
   { path: '/document-drafter', label: 'Document Drafter',    icon: FileEdit,        module: 6       },
   { path: '/document-analyzer',label: 'Document Analyzer',   icon: FileSearch,      module: 7       },
   { path: '/scam-detection',   label: 'Scam Detection',      icon: ShieldAlert,     module: 8       },
-  { path: '/filing-guide',     label: 'Filing Guide',        icon: ClipboardList,   module: 9       },
-  { path: '/vault-deadlines',  label: 'Vault & Deadlines',   icon: FolderLock,      module: 10      },
+  // ── Temporarily hidden from UI navigation. DO NOT DELETE. ──────────────────
+  // Uncomment the lines below to restore Filing Guide & Vault in the sidebar.
+  // { path: '/filing-guide',     label: 'Filing Guide',        icon: ClipboardList,   module: 9       },
+  // { path: '/vault-deadlines',  label: 'Vault & Deadlines',   icon: FolderLock,      module: 10      },
+  // ──────────────────────────────────────────────────────────────────────────
   { path: '/settings',         label: 'Settings',            icon: Settings,        module: 13      },
 ];
 
@@ -70,23 +75,40 @@ const NAV_LINKS = [
 // ── AppLayout component ────────────────────────────────────────────────────
 function AppLayout() {
   const { user, logout } = useAuth();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Close mobile navigation drawer
+  const closeMobileNav = () => setIsMobileNavOpen(false);
 
   return (
     <div className="app-layout">
 
       {/* ── Header ───────────────────────────────────────────────────── */}
       <header className="app-header">
-        <div className="app-header__brand">
-          <div className="app-header__logo-wrap">
-            <Scale className="app-header__logo-icon" size={22} strokeWidth={2.2} />
+        <div className="app-header__left">
+          {/* Mobile hamburger menu button */}
+          <button
+            type="button"
+            className="app-header__menu-btn"
+            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+            aria-label={isMobileNavOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileNavOpen}
+          >
+            {isMobileNavOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <div className="app-header__brand">
+            <div className="app-header__logo-wrap">
+              <Scale className="app-header__logo-icon" size={22} strokeWidth={2.2} />
+            </div>
+            <span className="app-header__name">LEXIS</span>
+            <span className="app-header__tagline">Legal Aid, Autonomously</span>
           </div>
-          <span className="app-header__name">LEXIS</span>
-          <span className="app-header__tagline">Legal Aid, Autonomously</span>
         </div>
 
         <div className="app-header__user">
-          {/* Show the user's email/phone (or "User") */}
-          <span className="app-header__phone">
+          {/* Show the user's email/phone (or "User") with tooltip */}
+          <span className="app-header__phone" title={user?.email || user?.phone || user?.id || 'User'}>
             {user?.email || user?.phone || user?.id || 'User'}
           </span>
           <span className="app-header__role-badge">{user?.role || 'user'}</span>
@@ -98,17 +120,30 @@ function AppLayout() {
         </div>
       </header>
 
+      {/* ── Mobile drawer overlay backdrop ───────────────────────────── */}
+      {isMobileNavOpen && (
+        <div
+          className="app-sidebar__backdrop"
+          onClick={closeMobileNav}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ── Body: sidebar + main ─────────────────────────────────────── */}
       <div className="app-body">
 
-        {/* ── Sidebar navigation ───────────────────────────────────── */}
-        <nav className="app-sidebar" aria-label="Main navigation">
+        {/* ── Sidebar navigation (sliding drawer on mobile) ─────────── */}
+        <nav
+          className={`app-sidebar ${isMobileNavOpen ? 'app-sidebar--open' : ''}`}
+          aria-label="Main navigation"
+        >
           <ul className="app-sidebar__list">
             {NAV_LINKS.map(({ path, label, icon: IconComponent }) => (
               <li key={path} className="app-sidebar__item">
                 <NavLink
                   to={path}
                   end={path === '/'}   // exact match for home only
+                  onClick={closeMobileNav}
                   className={({ isActive }) =>
                     isActive ? 'app-sidebar__link app-sidebar__link--active'
                              : 'app-sidebar__link'
@@ -124,6 +159,7 @@ function AppLayout() {
               <li className="app-sidebar__item" style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.5rem' }}>
                 <NavLink
                   to="/admin"
+                  onClick={closeMobileNav}
                   className={({ isActive }) =>
                     isActive ? 'app-sidebar__link app-sidebar__link--active'
                              : 'app-sidebar__link'
@@ -140,6 +176,7 @@ function AppLayout() {
               <li className="app-sidebar__item" style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.5rem' }}>
                 <NavLink
                   to="/lawyer"
+                  onClick={closeMobileNav}
                   className={({ isActive }) =>
                     isActive ? 'app-sidebar__link app-sidebar__link--active'
                              : 'app-sidebar__link'

@@ -85,9 +85,10 @@
 
 @media (max-width: 650px) {
   .admin-layout__header {
-    padding: 12px 14px;
-    align-items: flex-start;
+    padding: 10px 14px;
+    align-items: center;
     flex-wrap: wrap;
+    gap: 10px;
   }
 
   .admin-layout__tagline {
@@ -98,4 +99,32 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+
+  .admin-layout__account span:first-child {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-layout__logout {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
 }
+
+@media (max-width: 420px) {
+  .admin-layout__name {
+    font-size: 19px;
+  }
+
+  .admin-layout__logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .admin-layout__badge {
+    display: none;
+  }
+}
+

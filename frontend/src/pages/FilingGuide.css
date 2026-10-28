@@ -7,8 +7,9 @@
 
 .filing-page-container {
   max-width: 950px;
+  width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 3rem 1.25rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -20,7 +21,7 @@
   background: linear-gradient(135deg, #093729 0%, #115e49 50%, #18795e 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  padding: 1.5rem 1.75rem;
+  padding: clamp(1.1rem, 3.5vw, 1.5rem) clamp(1.1rem, 3.5vw, 1.75rem);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1015,3 +1016,27 @@
     align-items: flex-start;
   }
 }
+
+@media (max-width: 540px) {
+  .filing-header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .filing-header-title {
+    font-size: 1.3rem;
+  }
+
+  .filing-header-tags {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .btn-send-filing-query {
+    padding: 0 1rem;
+    font-size: 0.85rem;
+  }
+}
+

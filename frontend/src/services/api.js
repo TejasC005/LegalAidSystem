@@ -236,7 +236,7 @@ export function uploadDocumentForAnalysis(file, sessionId = null) {
   }
 
   return api.post('/api/v1/analysis/upload', formData, {
-    timeout: 60000,  // 60s — OCR on large documents can take time
+    timeout: 90000,  // 90s — safe buffer for OCR & large document processing
   });
 }
 
@@ -581,6 +581,44 @@ export function deleteAccount() {
 
 export function exportUserData() {
   return api.get('/api/v1/users/me/export');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-Admin & Collections Explorer Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function getAdminTeam() {
+  return api.get('/api/v1/admin/admins');
+}
+
+export function createAdmin(data) {
+  return api.post('/api/v1/admin/admins', data);
+}
+
+export function updateAdminStatus(adminId, isActive) {
+  return api.patch(`/api/v1/admin/admins/${adminId}/status`, { is_active: isActive });
+}
+
+export function resetAdminPassword(adminId, password) {
+  return api.patch(`/api/v1/admin/admins/${adminId}/password`, { password });
+}
+
+export function getDatabaseCollections() {
+  return api.get('/api/v1/admin/collections');
+}
+
+export function createDatabaseCollection(name, description) {
+  return api.post('/api/v1/admin/collections', { name, description });
+}
+
+export function getCollectionDocuments(collectionName, skip = 0, limit = 25) {
+  return api.get(`/api/v1/admin/collections/${collectionName}/documents`, {
+    params: { skip, limit },
+  });
+}
+
+export function dropCustomCollection(collectionName) {
+  return api.delete(`/api/v1/admin/collections/${collectionName}`);
 }
 
 // Default export — the raw Axios instance.

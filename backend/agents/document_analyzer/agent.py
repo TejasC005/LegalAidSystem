@@ -461,9 +461,9 @@ class DocumentAnalyzerAgent:
                 model=model,
             )
 
-            # Rewrite YELLOW/RED clauses
+            # Rewrite YELLOW/RED clauses (skip if already generated during batch classification)
             for result in clause_results:
-                if result.risk_level in (RiskLevel.YELLOW, RiskLevel.RED):
+                if result.risk_level in (RiskLevel.YELLOW, RiskLevel.RED) and not result.rewrite:
                     result.rewrite = await rewrite_clause(
                         result,
                         openai_api_key=openai_api_key,

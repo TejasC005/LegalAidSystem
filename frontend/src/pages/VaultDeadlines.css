@@ -12,8 +12,9 @@
   min-height: calc(100vh - 120px);
   background: var(--color-bg, #f4f6f5);
   color: var(--color-text, #1c2b28);
-  padding: 1.5rem 1rem 3rem;
+  padding: 0;
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -24,7 +25,7 @@
   gap: 1.25rem;
   background: linear-gradient(135deg, #134e42 0%, #1a6b5a 100%);
   border-radius: 16px;
-  padding: 1.75rem 2rem;
+  padding: clamp(1.2rem, 3.5vw, 1.75rem) clamp(1.2rem, 3.5vw, 2rem);
   margin-bottom: 2rem;
   color: #ffffff;
   box-shadow: 0 4px 16px rgba(19, 78, 66, 0.2);
@@ -535,3 +536,39 @@
   color: #94a3b8;
   font-size: 0.88rem;
 }
+
+/* ── Responsive Mobile Queries ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .vault-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1.25rem;
+  }
+
+  .glass-panel {
+    padding: 1.25rem 1rem;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .deadline-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .deadline-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+

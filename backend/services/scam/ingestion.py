@@ -184,7 +184,7 @@ async def seed_scam_patterns_mongo(mongo_db, json_file_path: Path = None) -> int
 
     collection = mongo_db["scam_patterns"]
     count = 0
-    from datetime import timezone
+    from datetime import datetime, timezone
 
     now_iso = datetime.now(timezone.utc).isoformat()
 
